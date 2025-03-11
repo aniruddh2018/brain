@@ -2,13 +2,13 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Activity, Brain, Clock, Download, Lightbulb, Zap, Award, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { Activity, Brain, Clock, Download, Lightbulb, Zap, Award, ArrowUpRight, ArrowDownRight, RotateCcw, FileText, MoveRight, Star, Map, Puzzle, BarChart, TrendingUp, Check, BookOpen, Users, Briefcase, School, Medal, Coffee, BookOpenCheck, LucideIcon } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import CognitiveRadarChart from "@/components/dashboard/radar-chart"
 import ScoreGauge from "@/components/dashboard/score-gauge"
@@ -18,165 +18,481 @@ import PerformanceTimeline from "@/components/dashboard/performance-timeline"
 import { Loader2 } from "lucide-react"
 import { generateReport } from "@/lib/report-generator"
 
+// Import Chart.js components to fix doughnut error
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip as ChartTooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  RadialLinearScale,
+  BarElement,
+  Title
+} from 'chart.js'
+
+// Register Chart.js components
+ChartJS.register(
+  ArcElement, 
+  ChartTooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  PointElement, 
+  LineElement,
+  RadialLinearScale,
+  BarElement,
+  Title
+)
+
+// Import the Doughnut component from chart.js/react-chartjs-2
+import { Doughnut } from 'react-chartjs-2'
+
+// Or if you prefer, create your own Doughnut component:
+const DoughnutChart = ({ data, options }: { data: any, options: any }) => {
+  const chartRef = useRef<HTMLCanvasElement>(null)
+  const chartInstance = useRef<any>(null)
+
+  useEffect(() => {
+    if (chartRef.current) {
+      // Clean up previous chart instance
+      if (chartInstance.current) {
+        chartInstance.current.destroy()
+      }
+
+      // Create new chart
+      const ctx = chartRef.current.getContext('2d')
+      if (ctx) {
+        chartInstance.current = new ChartJS(ctx, {
+          type: 'doughnut',
+          data: data,
+          options: options
+        })
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy()
+      }
+    }
+  }, [data, options])
+
+  return (
+    <div className="relative h-full w-full">
+      <canvas ref={chartRef} id="doughnut-chart"></canvas>
+    </div>
+  )
+}
+
+// Define DomainAnalysis component
+const DomainAnalysis = ({ domain, score }: { domain: string, score: number }) => {
+  return (
+    <div>
+      {/* This component displays detailed analysis of a cognitive domain */}
+      {getDetailedAnalysis(domain, score)}
+    </div>
+  );
+};
+
+// Create a simple score display component without Chart.js
+const DomainScoreDisplay = ({ domain, score }: { domain: string, score: number }) => {
+  const scoreColor = 
+    score >= 80 ? 'text-green-600 bg-green-50 border-green-200' : 
+    score >= 60 ? 'text-blue-600 bg-blue-50 border-blue-200' : 
+    score >= 40 ? 'text-yellow-600 bg-yellow-50 border-yellow-200' : 
+    'text-red-600 bg-red-50 border-red-200';
+    
+  return (
+    <div className={`rounded-lg p-4 border ${scoreColor} flex flex-col items-center justify-center h-32`}>
+      <div className="text-3xl font-bold mb-1">{score}</div>
+      <div className="text-sm mb-2">{domain}</div>
+      <div className="w-full bg-gray-200 rounded-full h-2.5">
+        <div 
+          className={`h-2.5 rounded-full ${
+            score >= 80 ? 'bg-green-600' : 
+            score >= 60 ? 'bg-blue-600' : 
+            score >= 40 ? 'bg-yellow-600' : 
+            'bg-red-600'
+          }`} 
+          style={{ width: `${score}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+};
+
 export default function ResultsPage() {
   const router = useRouter()
   const [userData, setUserData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [report, setReport] = useState<string>("")
-  const [generatingReport, setGeneratingReport] = useState(false)
+  const [error, setError] = useState<string>("")
+  const [generating, setGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
+  const [errorSections, setErrorSections] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    // Get user data from localStorage
+    try {
     const storedData = localStorage.getItem("userData")
     if (!storedData) {
-      router.push("/")
+        setError("No assessment data found. Please complete the games first.")
+        setLoading(false)
       return
     }
 
     const parsedData = JSON.parse(storedData)
-
-    // Check if all games are completed
-    if (!parsedData.metrics || Object.keys(parsedData.metrics).length < 6) {
-      router.push("/games")
+      console.log("Loaded results data:", parsedData)
+      
+      if (!parsedData.metrics || Object.keys(parsedData.metrics).length === 0) {
+        setError("No game metrics found. Please complete the assessments first.")
+        setLoading(false)
       return
     }
 
     setUserData(parsedData)
     setLoading(false)
-  }, [router])
+    } catch (err) {
+      console.error("Error loading user data:", err)
+      setError("Failed to load assessment results. Please try again.")
+      setLoading(false)
+    }
+  }, [])
 
   const handleStartOver = () => {
-    localStorage.removeItem("userData")
-    router.push("/")
+    try {
+      const basicInfo = userData ? {
+        name: userData.name,
+        age: userData.age,
+        education: userData.education,
+        difficulty: userData.difficulty,
+        gameIndex: 0,
+        metrics: {}
+      } : null;
+      
+      if (basicInfo) {
+        localStorage.setItem("userData", JSON.stringify(basicInfo));
+      } else {
+        localStorage.removeItem("userData");
+      }
+      
+      router.push("/games");
+    } catch (err) {
+      console.error("Error resetting game:", err);
+      setError("Failed to restart assessment. Please refresh the page.");
+    }
   }
 
   const handleGenerateReport = async () => {
-    setGeneratingReport(true)
+    if (!userData) return
+    
     try {
+      setGenerating(true)
+      setError("") // Clear any previous errors
+      
+      // Add a clear message about using Gemini
+      console.log("Generating report using Google Gemini...")
+      
       const generatedReport = await generateReport(userData)
       setReport(generatedReport)
-    } catch (error) {
-      console.error("Error generating report:", error)
-      setReport("There was an error generating your cognitive assessment report. Please try again later.")
-    } finally {
-      setGeneratingReport(false)
+      setGenerating(false)
+    } catch (err) {
+      console.error("Error generating report with Gemini:", err)
+      setError("Failed to generate detailed report. Please verify your Gemini API key and try again.")
+      setGenerating(false)
+    }
+  }
+  
+  const calculateOverallScore = () => {
+    if (!userData?.metrics) return 0
+    
+    try {
+  const metrics = userData.metrics
+      let totalScore = 0
+      let count = 0
+      
+      if (metrics.memoryMatch?.memoryScore) {
+        totalScore += metrics.memoryMatch.memoryScore
+        count++
+      }
+      
+      if (metrics.towerOfHanoi?.problemSolvingScore) {
+        totalScore += metrics.towerOfHanoi.problemSolvingScore
+        count++
+      }
+      
+      if (metrics.wordPuzzle?.vocabularyScore) {
+        totalScore += metrics.wordPuzzle.vocabularyScore
+        count++
+      }
+      
+      if (metrics.spatialPattern?.spatialScore) {
+        totalScore += metrics.spatialPattern.spatialScore
+        count++
+      }
+      
+      if (metrics.mazeRun?.spatialNavigationScore) {
+        totalScore += metrics.mazeRun.spatialNavigationScore
+        count++
+      }
+      
+      if (metrics.stroopChallenge?.cognitiveFlexibilityScore) {
+        totalScore += metrics.stroopChallenge.cognitiveFlexibilityScore
+        count++
+      }
+      
+      return count > 0 ? Math.round(totalScore / count) : 0
+    } catch (err) {
+      console.error("Error calculating overall score:", err)
+      return 0
+    }
+  }
+
+  const getDomainScores = () => {
+    if (!userData?.metrics) {
+      return {
+        memory: 0,
+        problemSolving: 0,
+        vocabulary: 0,
+        spatialReasoning: 0,
+        navigation: 0,
+        cognitiveFlexibility: 0
+      }
+    }
+    
+    try {
+      const m = userData.metrics
+      return {
+        memory: m.memoryMatch?.memoryScore || 0,
+        problemSolving: m.towerOfHanoi?.problemSolvingScore || 0,
+        vocabulary: m.wordPuzzle?.vocabularyScore || 0,
+        spatialReasoning: m.spatialPattern?.spatialScore || 0,
+        navigation: m.mazeRun?.spatialNavigationScore || 0,
+        cognitiveFlexibility: m.stroopChallenge?.cognitiveFlexibilityScore || 0
+      }
+    } catch (err) {
+      console.error("Error extracting domain scores:", err)
+      return {
+        memory: 0,
+        problemSolving: 0,
+        vocabulary: 0,
+        spatialReasoning: 0,
+        navigation: 0,
+        cognitiveFlexibility: 0
+      }
+    }
+  }
+
+  const createRadarData = () => {
+    const scores = getDomainScores()
+    
+    return {
+      labels: [
+        'Memory',
+        'Problem Solving',
+        'Vocabulary',
+        'Spatial Reasoning',
+        'Navigation',
+        'Cognitive Flexibility'
+      ],
+    datasets: [
+      {
+          label: 'Cognitive Performance',
+        data: [
+            scores.memory,
+            scores.problemSolving,
+            scores.vocabulary,
+            scores.spatialReasoning,
+            scores.navigation,
+            scores.cognitiveFlexibility
+          ],
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 1
+        }
+      ]
+    }
+  }
+
+  const createComparisonData = () => {
+    const scores = getDomainScores()
+    
+    return {
+      labels: ['Memory', 'Problem Solving', 'Vocabulary', 'Spatial Reasoning', 'Navigation', 'Flexibility'],
+    datasets: [
+      {
+          label: 'Your Scores',
+        data: [
+            scores.memory,
+            scores.problemSolving,
+            scores.vocabulary,
+            scores.spatialReasoning,
+            scores.navigation,
+            scores.cognitiveFlexibility
+          ],
+          backgroundColor: 'rgba(53, 162, 235, 0.5)',
+        }
+      ]
+    }
+  }
+
+  const getDomainStrengthsAndWeaknesses = () => {
+    const scores = getDomainScores()
+    const domains = [
+      { name: 'Memory', score: scores.memory },
+      { name: 'Problem Solving', score: scores.problemSolving },
+      { name: 'Vocabulary', score: scores.vocabulary },
+      { name: 'Spatial Reasoning', score: scores.spatialReasoning },
+      { name: 'Navigation', score: scores.navigation },
+      { name: 'Cognitive Flexibility', score: scores.cognitiveFlexibility }
+    ]
+    
+    domains.sort((a, b) => b.score - a.score)
+    
+    return {
+      strengths: domains.slice(0, 2),
+      weaknesses: domains.slice(-2).reverse()
     }
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your assessment results...</p>
+        </div>
+      </div>
+    )
   }
 
-  const metrics = userData.metrics
-
-  // Calculate overall cognitive score (weighted average of all domains)
-  const overallScore = Math.round(
-    metrics.memoryMatch.memoryScore * 0.15 +
-      metrics.towerOfHanoi.problemSolvingScore * 0.2 +
-      metrics.wordPuzzle.vocabularyScore * 0.15 +
-      metrics.spatialPattern.spatialScore * 0.15 +
-      metrics.mazeRun.spatialNavigationScore * 0.15 +
-      metrics.stroopChallenge.cognitiveFlexibilityScore * 0.2,
-  )
-
-  // Identify strengths and weaknesses
-  const allScores = [
-    { name: "Memory", score: metrics.memoryMatch.memoryScore },
-    { name: "Problem Solving", score: metrics.towerOfHanoi.problemSolvingScore },
-    { name: "Vocabulary", score: metrics.wordPuzzle.vocabularyScore },
-    { name: "Spatial Reasoning", score: metrics.spatialPattern.spatialScore },
-    { name: "Navigation", score: metrics.mazeRun.spatialNavigationScore },
-    { name: "Cognitive Flexibility", score: metrics.stroopChallenge.cognitiveFlexibilityScore },
-  ]
-
-  const sortedScores = [...allScores].sort((a, b) => b.score - a.score)
-  const strengths = sortedScores.slice(0, 2)
-  const weaknesses = sortedScores.slice(-2)
-
-  // Prepare data for radar chart
-  const radarData = {
-    labels: ["Memory", "Problem Solving", "Vocabulary", "Spatial Reasoning", "Navigation", "Cognitive Flexibility"],
-    datasets: [
-      {
-        label: "Your Performance",
-        data: [
-          metrics.memoryMatch.memoryScore,
-          metrics.towerOfHanoi.problemSolvingScore,
-          metrics.wordPuzzle.vocabularyScore,
-          metrics.spatialPattern.spatialScore,
-          metrics.mazeRun.spatialNavigationScore,
-          metrics.stroopChallenge.cognitiveFlexibilityScore,
-        ],
-        backgroundColor: "rgba(99, 102, 241, 0.2)",
-        borderColor: "rgb(99, 102, 241)",
-        pointBackgroundColor: "rgb(99, 102, 241)",
-        pointBorderColor: "#fff",
-      },
-    ],
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+        <Card className="max-w-md w-full p-6 shadow-lg">
+          <div className="text-center">
+            <div className="bg-red-100 text-red-800 p-4 rounded-md mb-4">
+              <p>{error}</p>
+            </div>
+            <Button onClick={() => router.push('/')} className="mt-4">
+              Return Home
+            </Button>
+          </div>
+        </Card>
+      </div>
+    )
   }
 
-  // Prepare comparison data
-  const comparisonData = {
-    labels: ["Memory", "Problem Solving", "Vocabulary", "Spatial", "Navigation", "Flexibility"],
-    datasets: [
-      {
-        label: "Your Scores",
-        data: [
-          metrics.memoryMatch.memoryScore,
-          metrics.towerOfHanoi.problemSolvingScore,
-          metrics.wordPuzzle.vocabularyScore,
-          metrics.spatialPattern.spatialScore,
-          metrics.mazeRun.spatialNavigationScore,
-          metrics.stroopChallenge.cognitiveFlexibilityScore,
-        ],
-        backgroundColor: "rgba(99, 102, 241, 0.7)",
-      },
-      {
-        label: "Average Scores",
-        data: [70, 65, 72, 68, 67, 63],
-        backgroundColor: "rgba(156, 163, 175, 0.5)",
-      },
-    ],
+  if (!userData || !userData.metrics) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+        <Card className="max-w-md w-full p-6 shadow-lg">
+          <div className="text-center">
+            <div className="bg-yellow-100 text-yellow-800 p-4 rounded-md mb-4">
+              <p>No assessment data found. Please complete the games first.</p>
+            </div>
+            <Button onClick={() => router.push('/games')} className="mt-4">
+              Start Assessment
+            </Button>
+          </div>
+        </Card>
+      </div>
+    )
   }
 
-  // Generate recommendations based on weaknesses
-  const recommendations = [
-    {
-      title: `Improve ${weaknesses[0].name}`,
-      description: getRecommendation(weaknesses[0].name),
-      icon: Lightbulb,
-    },
-    {
-      title: `Boost ${weaknesses[1].name}`,
-      description: getRecommendation(weaknesses[1].name),
-      icon: Zap,
-    },
-  ]
+  const overallScore = calculateOverallScore()
+  const domainScores = getDomainScores()
+  const { strengths, weaknesses } = getDomainStrengthsAndWeaknesses()
+  
+  // Create a safe rendering function that catches errors
+  const renderSafely = (sectionName: string, renderFn: () => JSX.Element | string): JSX.Element => {
+    try {
+      const result = renderFn()
+      // If the result is a string, wrap it in a span
+      if (typeof result === 'string') {
+        return <span>{result}</span>
+      }
+      return result as JSX.Element
+    } catch (err) {
+      console.error(`Error rendering ${sectionName}:`, err)
+      setErrorSections(prev => ({ ...prev, [sectionName]: true }))
+      return (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+          <p>Error loading {sectionName} section. Please try refreshing the page.</p>
+        </div>
+      )
+    }
+  }
 
-  // Performance timeline data (simulated improvement over time)
-  const timelineData = {
-    labels: ["Day 1", "Day 3", "Day 7", "Day 14", "Day 30"],
+  // Create data for doughnut chart with proper typing
+  const createDomainDoughnutData = (domain: string, score: number) => {
+    return {
+      labels: ['Score', 'Remaining'],
     datasets: [
       {
-        label: "Projected Improvement",
-        data: [
-          overallScore,
-          Math.min(100, overallScore + 3),
-          Math.min(100, overallScore + 7),
-          Math.min(100, overallScore + 12),
-          Math.min(100, overallScore + 18),
-        ],
-        borderColor: "rgb(99, 102, 241)",
-        backgroundColor: "rgba(99, 102, 241, 0.1)",
-        tension: 0.3,
-        fill: true,
-      },
-    ],
+          data: [score, 100 - score],
+          backgroundColor: [
+            score >= 80 ? 'rgba(34, 197, 94, 0.8)' : 
+            score >= 60 ? 'rgba(59, 130, 246, 0.8)' : 
+            score >= 40 ? 'rgba(234, 179, 8, 0.8)' : 
+            'rgba(239, 68, 68, 0.8)',
+            'rgba(229, 231, 235, 0.5)'
+          ],
+          borderWidth: 0,
+          cutout: '75%'
+        }
+      ]
+    }
+  }
+
+  // Create a safe doughnut chart component
+  const SafeDoughnutChart = ({ domain, score }: { domain: string, score: number }) => {
+    const chartData = createDomainDoughnutData(domain, score)
+    
+    // Simple fallback if chart creation fails
+    if (!chartData) {
+      return (
+        <div className="flex items-center justify-center h-32 bg-gray-50 rounded">
+          <div className="text-center">
+            <div className="text-2xl font-bold">{score}</div>
+            <div className="text-sm text-gray-500">{domain}</div>
+          </div>
+        </div>
+      )
+    }
+    
+    return (
+      <div className="relative h-32">
+        <Doughnut 
+          data={chartData}
+          options={{
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                enabled: false
+              }
+            }
+          }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-2xl font-bold">{score}</div>
+            <div className="text-sm text-gray-500">{domain}</div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <Card className="mb-6">
           <CardHeader className="flex flex-row items-center justify-between">
@@ -211,7 +527,7 @@ export default function ResultsPage() {
                       <CardTitle className="text-lg">Cognitive Profile</CardTitle>
                     </CardHeader>
                     <CardContent className="h-[300px]">
-                      <CognitiveRadarChart data={radarData} />
+                      {renderSafely("cognitiveProfile", () => <CognitiveRadarChart data={createRadarData()} />)}
                     </CardContent>
                   </Card>
 
@@ -280,22 +596,22 @@ export default function ResultsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                      {allScores.map((item, index) => (
-                        <TooltipProvider key={index}>
+                      {Object.entries(domainScores).map(([domain, score]) => (
+                        <TooltipProvider key={domain}>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                                <h3 className="font-semibold text-gray-700 text-sm mb-2">{item.name}</h3>
+                                <h3 className="font-semibold text-gray-700 text-sm mb-2">{domain}</h3>
                                 <div className="flex items-center justify-between">
-                                  <div className={`text-2xl font-bold ${getScoreColor(item.score)}`}>{item.score}</div>
-                                  <div className={`text-xs px-2 py-1 rounded-full ${getScoreBadgeColor(item.score)}`}>
-                                    {getScoreLabel(item.score)}
+                                  <div className={`text-2xl font-bold ${getScoreColor(score)}`}>{score}</div>
+                                  <div className={`text-xs px-2 py-1 rounded-full ${getScoreBadgeColor(score)}`}>
+                                    {getScoreLabel(score)}
                                   </div>
                                 </div>
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{getScoreDescription(item.name)}</p>
+                              <p>{getScoreDescription(score)}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -307,264 +623,32 @@ export default function ResultsPage() {
 
               <TabsContent value="details" className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card>
+                  {Object.entries(domainScores).map(([domain, score]) => (
+                    <Card key={domain}>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg flex items-center">
                         <Brain className="h-5 w-5 mr-2 text-indigo-500" />
-                        Memory Performance
+                          {domain} Performance
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">Memory Score</span>
-                          <span className="font-bold">{metrics.memoryMatch.memoryScore}/100</span>
+                            <span className="text-sm font-medium">Score</span>
+                            <span className="font-bold">{score}/100</span>
                         </div>
-                        <Progress value={metrics.memoryMatch.memoryScore} className="h-2 mb-4" />
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <DetailItem
-                            label="Accuracy"
-                            value={`${metrics.memoryMatch.accuracy.toFixed(1)}%`}
-                            icon={Activity}
-                          />
-                          <DetailItem
-                            label="Reaction Time"
-                            value={`${metrics.memoryMatch.avgReactionTime.toFixed(2)}s`}
-                            icon={Clock}
-                          />
-                          <DetailItem
-                            label="Total Time"
-                            value={`${metrics.memoryMatch.totalTime.toFixed(1)}s`}
-                            icon={Clock}
-                          />
-                          <DetailItem label="Moves" value={metrics.memoryMatch.moves} icon={Activity} />
-                        </div>
+                          <Progress value={score} className="h-2 mb-4" />
 
                         <div className="pt-2">
                           <h4 className="text-sm font-semibold mb-1">Analysis</h4>
                           <p className="text-sm text-gray-600">
-                            {getDetailedAnalysis("Memory", metrics.memoryMatch.memoryScore)}
+                              {renderSafely(domain, () => <DomainAnalysis domain={domain} score={score} />)}
                           </p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg flex items-center">
-                        <Activity className="h-5 w-5 mr-2 text-indigo-500" />
-                        Problem Solving Performance
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">Problem Solving Score</span>
-                          <span className="font-bold">{metrics.towerOfHanoi.problemSolvingScore}/100</span>
-                        </div>
-                        <Progress value={metrics.towerOfHanoi.problemSolvingScore} className="h-2 mb-4" />
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <DetailItem label="Planning Score" value={metrics.towerOfHanoi.planningScore} icon={Brain} />
-                          <DetailItem
-                            label="Efficiency"
-                            value={`${metrics.towerOfHanoi.efficiency.toFixed(1)}%`}
-                            icon={Zap}
-                          />
-                          <DetailItem label="Moves Used" value={metrics.towerOfHanoi.moves} icon={Activity} />
-                          <DetailItem label="Optimal Moves" value={metrics.towerOfHanoi.optimalMoves} icon={Award} />
-                        </div>
-
-                        <div className="pt-2">
-                          <h4 className="text-sm font-semibold mb-1">Analysis</h4>
-                          <p className="text-sm text-gray-600">
-                            {getDetailedAnalysis("Problem Solving", metrics.towerOfHanoi.problemSolvingScore)}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg flex items-center">
-                        <Brain className="h-5 w-5 mr-2 text-indigo-500" />
-                        Vocabulary Performance
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">Vocabulary Score</span>
-                          <span className="font-bold">{metrics.wordPuzzle.vocabularyScore}/100</span>
-                        </div>
-                        <Progress value={metrics.wordPuzzle.vocabularyScore} className="h-2 mb-4" />
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <DetailItem label="Processing Speed" value={metrics.wordPuzzle.processingSpeed} icon={Zap} />
-                          <DetailItem
-                            label="Accuracy"
-                            value={`${metrics.wordPuzzle.accuracy.toFixed(1)}%`}
-                            icon={Activity}
-                          />
-                          <DetailItem
-                            label="Avg Word Time"
-                            value={`${metrics.wordPuzzle.avgWordTime.toFixed(2)}s`}
-                            icon={Clock}
-                          />
-                          <DetailItem
-                            label="Correct Words"
-                            value={`${metrics.wordPuzzle.correctAnswers}/${metrics.wordPuzzle.totalWords}`}
-                            icon={Award}
-                          />
-                        </div>
-
-                        <div className="pt-2">
-                          <h4 className="text-sm font-semibold mb-1">Analysis</h4>
-                          <p className="text-sm text-gray-600">
-                            {getDetailedAnalysis("Vocabulary", metrics.wordPuzzle.vocabularyScore)}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg flex items-center">
-                        <Brain className="h-5 w-5 mr-2 text-indigo-500" />
-                        Spatial Reasoning Performance
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">Spatial Score</span>
-                          <span className="font-bold">{metrics.spatialPattern.spatialScore}/100</span>
-                        </div>
-                        <Progress value={metrics.spatialPattern.spatialScore} className="h-2 mb-4" />
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <DetailItem
-                            label="Pattern Recognition"
-                            value={metrics.spatialPattern.patternRecognitionScore}
-                            icon={Brain}
-                          />
-                          <DetailItem label="Max Level" value={metrics.spatialPattern.maxLevel} icon={Award} />
-                          <DetailItem
-                            label="Pattern Length"
-                            value={metrics.spatialPattern.maxPatternLength}
-                            icon={Activity}
-                          />
-                          <DetailItem
-                            label="Reaction Time"
-                            value={`${metrics.spatialPattern.reactionTime.toFixed(2)}s`}
-                            icon={Clock}
-                          />
-                        </div>
-
-                        <div className="pt-2">
-                          <h4 className="text-sm font-semibold mb-1">Analysis</h4>
-                          <p className="text-sm text-gray-600">
-                            {getDetailedAnalysis("Spatial Reasoning", metrics.spatialPattern.spatialScore)}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg flex items-center">
-                        <Brain className="h-5 w-5 mr-2 text-indigo-500" />
-                        Spatial Navigation Performance
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">Navigation Score</span>
-                          <span className="font-bold">{metrics.mazeRun.spatialNavigationScore}/100</span>
-                        </div>
-                        <Progress value={metrics.mazeRun.spatialNavigationScore} className="h-2 mb-4" />
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <DetailItem label="Planning Score" value={metrics.mazeRun.planningScore} icon={Brain} />
-                          <DetailItem
-                            label="Efficiency"
-                            value={`${metrics.mazeRun.efficiency.toFixed(1)}%`}
-                            icon={Zap}
-                          />
-                          <DetailItem label="Backtracks" value={metrics.mazeRun.backtrackCount} icon={Activity} />
-                          <DetailItem
-                            label="Moves"
-                            value={`${metrics.mazeRun.moves} (Opt: ${metrics.mazeRun.optimalPath})`}
-                            icon={Activity}
-                          />
-                        </div>
-
-                        <div className="pt-2">
-                          <h4 className="text-sm font-semibold mb-1">Analysis</h4>
-                          <p className="text-sm text-gray-600">
-                            {getDetailedAnalysis("Navigation", metrics.mazeRun.spatialNavigationScore)}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg flex items-center">
-                        <Brain className="h-5 w-5 mr-2 text-indigo-500" />
-                        Cognitive Flexibility Performance
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">Flexibility Score</span>
-                          <span className="font-bold">{metrics.stroopChallenge.cognitiveFlexibilityScore}/100</span>
-                        </div>
-                        <Progress value={metrics.stroopChallenge.cognitiveFlexibilityScore} className="h-2 mb-4" />
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <DetailItem
-                            label="Attention Control"
-                            value={metrics.stroopChallenge.attentionControlScore}
-                            icon={Brain}
-                          />
-                          <DetailItem
-                            label="Accuracy"
-                            value={`${metrics.stroopChallenge.accuracy.toFixed(1)}%`}
-                            icon={Activity}
-                          />
-                          <DetailItem
-                            label="Response Time"
-                            value={`${metrics.stroopChallenge.avgResponseTime.toFixed(2)}s`}
-                            icon={Clock}
-                          />
-                          <DetailItem
-                            label="Interference Effect"
-                            value={`${metrics.stroopChallenge.interferenceEffect.toFixed(2)}s`}
-                            icon={Activity}
-                          />
-                        </div>
-
-                        <div className="pt-2">
-                          <h4 className="text-sm font-semibold mb-1">Analysis</h4>
-                          <p className="text-sm text-gray-600">
-                            {getDetailedAnalysis(
-                              "Cognitive Flexibility",
-                              metrics.stroopChallenge.cognitiveFlexibilityScore,
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  ))}
                 </div>
               </TabsContent>
 
@@ -574,7 +658,7 @@ export default function ResultsPage() {
                     <CardTitle className="text-lg">Cognitive Domain Comparison</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[400px]">
-                    <ComparisonChart data={comparisonData} />
+                    {renderSafely("comparisonChart", () => <ComparisonChart data={createComparisonData()} />)}
                   </CardContent>
                 </Card>
 
@@ -585,24 +669,19 @@ export default function ResultsPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
+                        {Object.entries(domainScores).map(([domain1, score1]) =>
+                          Object.entries(domainScores).map(([domain2, score2]) =>
+                            domain1 !== domain2 && (
                         <RelationshipItem
-                          domain1="Memory"
-                          domain2="Problem Solving"
-                          score1={metrics.memoryMatch.memoryScore}
-                          score2={metrics.towerOfHanoi.problemSolvingScore}
-                        />
-                        <RelationshipItem
-                          domain1="Vocabulary"
-                          domain2="Cognitive Flexibility"
-                          score1={metrics.wordPuzzle.vocabularyScore}
-                          score2={metrics.stroopChallenge.cognitiveFlexibilityScore}
-                        />
-                        <RelationshipItem
-                          domain1="Spatial Reasoning"
-                          domain2="Navigation"
-                          score1={metrics.spatialPattern.spatialScore}
-                          score2={metrics.mazeRun.spatialNavigationScore}
-                        />
+                                key={`${domain1}-${domain2}`}
+                                domain1={domain1}
+                                domain2={domain2}
+                                score1={score1}
+                                score2={score2}
+                              />
+                            )
+                          )
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -612,7 +691,7 @@ export default function ResultsPage() {
                       <CardTitle className="text-lg">Performance Timeline</CardTitle>
                     </CardHeader>
                     <CardContent className="h-[250px]">
-                      <PerformanceTimeline data={timelineData} />
+                      {renderSafely("performanceTimeline", () => <PerformanceTimeline data={createComparisonData()} />)}
                     </CardContent>
                   </Card>
                 </div>
@@ -632,10 +711,10 @@ export default function ResultsPage() {
                         <BalanceCard
                           title="Analytical vs. Creative"
                           score1={Math.round(
-                            (metrics.towerOfHanoi.problemSolvingScore + metrics.mazeRun.planningScore) / 2,
+                            (domainScores.problemSolving + domainScores.navigation) / 2,
                           )}
                           score2={Math.round(
-                            (metrics.wordPuzzle.vocabularyScore + metrics.spatialPattern.patternRecognitionScore) / 2,
+                            (domainScores.vocabulary + domainScores.spatialReasoning) / 2,
                           )}
                           label1="Analytical"
                           label2="Creative"
@@ -644,9 +723,9 @@ export default function ResultsPage() {
                         <BalanceCard
                           title="Processing Speed vs. Accuracy"
                           score1={Math.round(
-                            metrics.memoryMatch.avgReactionTime * 20 + metrics.stroopChallenge.avgResponseTime * 20,
+                            domainScores.memory * 20 + domainScores.cognitiveFlexibility * 20,
                           )}
-                          score2={Math.round((metrics.memoryMatch.accuracy + metrics.stroopChallenge.accuracy) / 2)}
+                          score2={Math.round((domainScores.memory + domainScores.cognitiveFlexibility) / 2)}
                           label1="Speed"
                           label2="Accuracy"
                           reverse={true}
@@ -655,10 +734,10 @@ export default function ResultsPage() {
                         <BalanceCard
                           title="Visual vs. Verbal"
                           score1={Math.round(
-                            (metrics.spatialPattern.spatialScore + metrics.mazeRun.spatialNavigationScore) / 2,
+                            (domainScores.spatialReasoning + domainScores.navigation) / 2,
                           )}
                           score2={Math.round(
-                            (metrics.wordPuzzle.vocabularyScore + metrics.stroopChallenge.cognitiveFlexibilityScore) /
+                            (domainScores.vocabulary + domainScores.cognitiveFlexibility) /
                               2,
                           )}
                           label1="Visual"
@@ -671,11 +750,18 @@ export default function ResultsPage() {
               </TabsContent>
 
               <TabsContent value="recommendations" className="space-y-6">
+                {renderSafely('recommendations', () => (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  {recommendations.map((rec, index) => (
-                    <RecommendationCard key={index} title={rec.title} description={rec.description} icon={rec.icon} />
+                    {getRecommendations(strengths, weaknesses).map((rec, index) => (
+                      <RecommendationCard 
+                        key={index} 
+                        title={rec.title} 
+                        description={rec.description} 
+                        icon={rec.icon} 
+                      />
                   ))}
                 </div>
+                ))}
 
                 <Card>
                   <CardHeader className="pb-2">
@@ -689,26 +775,25 @@ export default function ResultsPage() {
                       </p>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        {strengths.map((strength, index) => (
                         <TrainingCard
-                          title="Week 1-2"
+                            key={index}
+                            title={`Focus on ${strength.name}`}
+                            focus={`Focus on ${strength.name}`}
+                            activities={getTrainingActivities(strength.name)}
+                          />
+                        ))}
+
+                        <TrainingCard
+                          title="Week 3-4"
                           focus={`Focus on ${weaknesses[0].name}`}
                           activities={getTrainingActivities(weaknesses[0].name)}
                         />
 
                         <TrainingCard
-                          title="Week 3-4"
+                          title="Week 5-6"
                           focus={`Focus on ${weaknesses[1].name}`}
                           activities={getTrainingActivities(weaknesses[1].name)}
-                        />
-
-                        <TrainingCard
-                          title="Week 5-6"
-                          focus="Balanced Training"
-                          activities={[
-                            "Combine exercises from all cognitive domains",
-                            "Increase difficulty progressively",
-                            "Track improvements weekly",
-                          ]}
                         />
                       </div>
 
@@ -764,14 +849,21 @@ export default function ResultsPage() {
             </Tabs>
             <div className="mt-8 flex flex-col items-center">
               {!report && (
-                <Button onClick={handleGenerateReport} disabled={generatingReport} className="mb-4">
-                  {generatingReport ? (
+                <Button 
+                  onClick={handleGenerateReport} 
+                  disabled={generating}
+                  className="bg-blue-600 hover:bg-blue-700 flex items-center"
+                >
+                  {generating ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating Report...
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      Generating with Gemini...
                     </>
                   ) : (
-                    "Generate Detailed Report"
+                    <>
+                      {/* You could add a Gemini logo here */}
+                      <FileText className="mr-2 h-4 w-4" /> Generate Report with Gemini
+                    </>
                   )}
                 </Button>
               )}
@@ -883,15 +975,12 @@ interface BalanceCardProps {
 }
 
 function BalanceCard({ title, score1, score2, label1, label2, reverse = false }: BalanceCardProps) {
-  // Normalize scores to be between 0-100
   const normalizedScore1 = Math.min(100, Math.max(0, score1))
   const normalizedScore2 = Math.min(100, Math.max(0, score2))
 
-  // Calculate balance percentage (how close the scores are)
   const total = normalizedScore1 + normalizedScore2
   const balance = total > 0 ? 100 - (Math.abs(normalizedScore1 - normalizedScore2) / (total / 2)) * 100 : 50
 
-  // Determine if the balance is good
   const isBalanced = balance >= 70
 
   return (
@@ -1009,104 +1098,73 @@ function ApplicationCard({ title, strengths, improvements }: ApplicationCardProp
   )
 }
 
-// Helper functions for text content
 function getScoreColor(score: number) {
-  if (score >= 85) return "text-green-600"
-  if (score >= 70) return "text-blue-600"
-  if (score >= 50) return "text-amber-600"
+  if (score >= 80) return "text-green-600"
+  if (score >= 60) return "text-blue-600"
+  if (score >= 40) return "text-yellow-600"
   return "text-red-600"
 }
 
 function getScoreBadgeColor(score: number) {
-  if (score >= 85) return "bg-green-100 text-green-800"
-  if (score >= 70) return "bg-blue-100 text-blue-800"
-  if (score >= 50) return "bg-amber-100 text-amber-800"
+  if (score >= 80) return "bg-green-100 text-green-800"
+  if (score >= 60) return "bg-blue-100 text-blue-800"
+  if (score >= 40) return "bg-yellow-100 text-yellow-800"
   return "bg-red-100 text-red-800"
 }
 
 function getScoreLabel(score: number) {
-  if (score >= 85) return "Excellent"
-  if (score >= 70) return "Good"
-  if (score >= 50) return "Average"
-  return "Needs Work"
+  if (score >= 80) return "Excellent"
+  if (score >= 60) return "Good"
+  if (score >= 40) return "Average"
+  return "Needs Development"
 }
 
-function getScoreDescription(domain: string) {
-  const descriptions: { [key: string]: string } = {
-    Memory: "Ability to retain and recall information over short periods",
-    "Problem Solving": "Ability to analyze situations and find logical solutions",
-    Vocabulary: "Word recognition and language processing abilities",
-    "Spatial Reasoning": "Ability to understand and manipulate visual patterns",
-    Navigation: "Ability to plan routes and navigate spatial environments",
-    "Cognitive Flexibility": "Ability to switch between different mental tasks",
-  }
-
-  return descriptions[domain] || "Cognitive ability score"
+function getScoreDescription(score: number) {
+  if (score >= 80) return "Your cognitive abilities are well developed across multiple domains."
+  if (score >= 60) return "You show good cognitive performance with some areas of excellence."
+  if (score >= 40) return "Your cognitive abilities are in the average range with potential for improvement."
+  return "There are opportunities to develop and strengthen your cognitive abilities."
 }
 
 function getDetailedAnalysis(domain: string, score: number) {
   if (score >= 85) {
     const excellentAnalysis: { [key: string]: string } = {
-      Memory:
-        "You demonstrate exceptional visual memory abilities, with strong recall and pattern recognition. Your quick reaction time suggests efficient memory processing.",
-      "Problem Solving":
-        "Your problem-solving skills are excellent, showing strong logical reasoning and efficient solution planning. You approach problems methodically and find optimal solutions.",
-      Vocabulary:
-        "You exhibit outstanding word recognition and processing abilities. Your vocabulary skills are well-developed, allowing for quick and accurate word processing.",
-      "Spatial Reasoning":
-        "Your spatial reasoning abilities are exceptional, with excellent pattern recognition and visual processing. You can easily identify and remember complex spatial patterns.",
-      Navigation:
-        "You demonstrate superior spatial navigation skills, planning efficient routes with minimal backtracking. Your spatial awareness and planning abilities are highly developed.",
-      "Cognitive Flexibility":
-        "Your cognitive flexibility is excellent, showing strong ability to switch between tasks and resist interference. Your attention control and mental adaptability are well-developed.",
+      Memory: "You show exceptional memory abilities with strong recall and recognition patterns.",
+      "Problem Solving": "Your problem-solving skills are highly developed, with excellent logical reasoning.",
+      Vocabulary: "You demonstrate an extensive vocabulary and excellent word processing abilities.",
+      "Spatial Reasoning": "Your spatial reasoning is exceptional, with strong pattern recognition abilities.",
+      Navigation: "You excel at spatial navigation with efficient pathfinding and minimal backtracking.",
+      "Cognitive Flexibility": "You demonstrate excellent cognitive flexibility and attention control.",
     }
     return excellentAnalysis[domain] || "You show excellent performance in this cognitive domain."
   } else if (score >= 70) {
-    const goodAnalysis: { [key: string]: string } = {
-      Memory:
-        "You show good memory abilities with solid recall and recognition. Your visual memory is functioning well, though there's room for improvement in reaction time.",
-      "Problem Solving":
-        "Your problem-solving skills are good, with effective logical reasoning. You find solutions efficiently, though occasionally not taking the most optimal path.",
-      Vocabulary:
-        "You demonstrate good word recognition and processing. Your vocabulary skills are solid, with room for improvement in processing speed.",
-      "Spatial Reasoning":
-        "Your spatial reasoning is good, with effective pattern recognition. You can identify and remember spatial patterns well, with some room for improvement.",
-      Navigation:
-        "You show good spatial navigation abilities, planning routes effectively with occasional backtracking. Your spatial awareness is well-developed.",
-      "Cognitive Flexibility":
-        "Your cognitive flexibility is good, showing ability to switch between tasks and manage interference. Your attention control is effective.",
+    const veryGoodAnalysis: { [key: string]: string } = {
+      Memory: "You have very good memory abilities with effective recall and recognition strategies.",
+      "Problem Solving": "Your problem-solving approach is methodical and effective in most situations.",
+      Vocabulary: "You show a strong vocabulary with good word recognition and processing.",
+      "Spatial Reasoning": "Your spatial reasoning is well-developed with good pattern recognition.",
+      Navigation: "You navigate spatial environments efficiently with good pathfinding abilities.",
+      "Cognitive Flexibility": "You show very good cognitive flexibility with effective task-switching abilities.",
     }
-    return goodAnalysis[domain] || "You show good performance in this cognitive domain."
+    return veryGoodAnalysis[domain] || "You show very good performance in this cognitive domain."
   } else if (score >= 50) {
-    const averageAnalysis: { [key: string]: string } = {
-      Memory:
-        "Your memory abilities are average, with moderate recall and recognition. There's potential for improvement in both accuracy and reaction time.",
-      "Problem Solving":
-        "Your problem-solving skills are average, showing basic logical reasoning. You can find solutions, though often not taking the most efficient approach.",
-      Vocabulary:
-        "You demonstrate average word recognition and processing. Your vocabulary skills are functional but could benefit from further development.",
-      "Spatial Reasoning":
-        "Your spatial reasoning is average, with basic pattern recognition. You can identify simple patterns but may struggle with more complex ones.",
-      Navigation:
-        "You show average spatial navigation abilities, with some inefficiency in route planning and moderate backtracking. There's room for improvement in spatial awareness.",
-      "Cognitive Flexibility":
-        "Your cognitive flexibility is average, showing some ability to switch between tasks but with noticeable interference effects. Your attention control could be improved.",
+    const goodAnalysis: { [key: string]: string } = {
+      Memory: "Your memory abilities are good but could benefit from more consistent strategies.",
+      "Problem Solving": "You solve problems effectively but occasionally take longer routes to solutions.",
+      Vocabulary: "Your vocabulary is good with room for expansion in certain areas.",
+      "Spatial Reasoning": "Your spatial reasoning shows good fundamentals with some areas to strengthen.",
+      Navigation: "You navigate spatial environments adequately with occasional inefficient routes.",
+      "Cognitive Flexibility": "Your cognitive flexibility is good with some room for improvement in switching tasks.",
     }
-    return averageAnalysis[domain] || "You show average performance in this cognitive domain."
+    return goodAnalysis[domain] || "You show good performance in this cognitive domain with room for improvement."
   } else {
     const needsWorkAnalysis: { [key: string]: string } = {
-      Memory:
-        "Your memory abilities need development, with challenges in recall and recognition. Focused practice could significantly improve your visual memory performance.",
-      "Problem Solving":
-        "Your problem-solving skills need development, with challenges in logical reasoning. Structured practice could help improve your approach to finding solutions.",
-      Vocabulary:
-        "You face challenges with word recognition and processing. Targeted vocabulary exercises could help strengthen these skills.",
-      "Spatial Reasoning":
-        "Your spatial reasoning needs development, with difficulties in pattern recognition. Specific exercises could help improve your spatial processing abilities.",
-      Navigation:
-        "You show challenges with spatial navigation, with inefficient route planning and frequent backtracking. Focused practice could improve your spatial awareness.",
-      "Cognitive Flexibility":
-        "Your cognitive flexibility needs development, with difficulties switching between tasks and managing interference. Targeted exercises could improve your attention control.",
+      Memory: "Your memory abilities need development, with challenges in recall and recognition.",
+      "Problem Solving": "Your problem-solving skills need development, with challenges in logical reasoning.",
+      Vocabulary: "You face challenges with word recognition and processing.",
+      "Spatial Reasoning": "Your spatial reasoning needs development, with difficulties in pattern recognition.",
+      Navigation: "You show challenges with spatial navigation, with inefficient route planning.",
+      "Cognitive Flexibility": "Your cognitive flexibility needs development, with difficulties switching between tasks.",
     }
     return needsWorkAnalysis[domain] || "This cognitive domain would benefit from focused development."
   }
@@ -1125,23 +1183,60 @@ function getRelationshipDescription(domain1: string, domain2: string, score1: nu
   }
 }
 
-function getRecommendation(domain: string) {
-  const recommendations: { [key: string]: string } = {
-    Memory:
-      "Practice memory games daily, starting with simple patterns and gradually increasing complexity. Use visualization techniques and spaced repetition to strengthen recall abilities.",
-    "Problem Solving":
-      "Engage with logic puzzles, strategic games, and real-world problem scenarios. Break down complex problems into smaller steps and practice identifying multiple solution paths.",
-    Vocabulary:
-      "Read diverse materials daily, learn 5 new words per week, and practice word association games. Use context clues to deduce meanings and create connections between related words.",
-    "Spatial Reasoning":
-      "Practice with 3D puzzles, mental rotation exercises, and pattern recognition activities. Visualize objects from different perspectives and recreate complex patterns from memory.",
-    Navigation:
-      "Practice map reading, create mental maps of familiar places, and try navigating new environments without GPS. Identify landmarks and practice finding alternative routes.",
-    "Cognitive Flexibility":
-      "Practice task-switching exercises, engage with activities requiring divided attention, and try Stroop-like exercises with increasing difficulty. Mindfulness meditation can also improve cognitive control.",
+interface Recommendation {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+}
+
+function getRecommendations(
+  strengths: { name: string; score: number }[], 
+  weaknesses: { name: string; score: number }[]
+): Recommendation[] {
+  const domainIcons: Record<string, LucideIcon> = {
+    'Memory': Brain,
+    'Problem Solving': Puzzle,
+    'Vocabulary': BookOpen,
+    'Spatial Reasoning': Map,
+    'Navigation': Map,
+    'Cognitive Flexibility': Activity
+  };
+
+  const recommendations: Recommendation[] = [];
+
+  if (strengths.length > 0) {
+    const primaryStrength = strengths[0];
+    recommendations.push({
+      title: `Leverage Your ${primaryStrength.name} Strengths`,
+      description: `Your exceptional ${primaryStrength.name.toLowerCase()} abilities can be applied to enhance learning and problem-solving in various contexts.`,
+      icon: domainIcons[primaryStrength.name] || Brain
+    });
   }
 
-  return recommendations[domain] || "Practice targeted exercises focusing on this cognitive domain regularly."
+  if (weaknesses.length > 0) {
+    const primaryWeakness = weaknesses[0];
+    recommendations.push({
+      title: `Develop ${primaryWeakness.name} Skills`,
+      description: `Targeted exercises to strengthen your ${primaryWeakness.name.toLowerCase()} abilities can lead to significant improvements in overall cognitive performance.`,
+      icon: domainIcons[primaryWeakness.name] || Lightbulb
+    });
+  }
+
+  if (strengths.length > 0 && weaknesses.length > 0) {
+    recommendations.push({
+      title: "Balance Your Cognitive Profile",
+      description: `Work on transferring strategies from your strong ${strengths[0].name.toLowerCase()} domain to improve performance in ${weaknesses[0].name.toLowerCase()}.`,
+      icon: Activity
+    });
+  }
+
+  recommendations.push({
+    title: "Daily Cognitive Training",
+    description: "Incorporate short daily exercises across different cognitive domains for balanced development and maintenance of cognitive abilities.",
+    icon: Medal
+  });
+
+  return recommendations;
 }
 
 function getTrainingActivities(domain: string) {

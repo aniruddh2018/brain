@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Hourglass } from "lucide-react"
 
@@ -24,15 +24,32 @@ export default function TowerOfHanoi({ difficulty, onComplete }: TowerOfHanoiPro
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
   const [optimalMoves, setOptimalMoves] = useState<number>(0)
   const [moveHistory, setMoveHistory] = useState<{ from: number; to: number; time: number }[]>([])
+  
+  // Use a ref to prevent multiple completion callbacks
+  const gameCompletedRef = useRef<boolean>(false)
 
   // Set up game based on difficulty
   useEffect(() => {
+    // Reset the completion ref when starting a new game
+    gameCompletedRef.current = false
+    
     if (difficulty === "easy") setDisks(3)
     else if (difficulty === "medium") setDisks(4)
     else setDisks(5)
 
     startGame()
   }, [difficulty])
+
+  // Check for game completion after each move
+  useEffect(() => {
+    if (!isPlaying || gameCompletedRef.current) return
+    
+    // Check if all disks are on the third tower
+    if (towers[2]?.length === disks) {
+      gameCompletedRef.current = true
+      finishGame()
+    }
+  }, [towers, disks, isPlaying])
 
   // Timer for game
   useEffect(() => {
@@ -46,16 +63,6 @@ export default function TowerOfHanoi({ difficulty, onComplete }: TowerOfHanoiPro
 
     return () => clearInterval(interval)
   }, [isPlaying, startTime])
-
-  const diskColors = [
-    "bg-red-500",
-    "bg-orange-500",
-    "bg-yellow-500",
-    "bg-green-500",
-    "bg-blue-500",
-    "bg-indigo-500",
-    "bg-purple-500",
-  ]
 
   const startGame = () => {
     // Initialize towers
@@ -77,7 +84,7 @@ export default function TowerOfHanoi({ difficulty, onComplete }: TowerOfHanoiPro
   }
 
   const handleTowerClick = (towerIndex: number) => {
-    if (!isPlaying) return
+    if (!isPlaying || gameCompletedRef.current) return
 
     if (selectedTower === null) {
       // No tower selected yet, check if this tower has disks
@@ -100,23 +107,24 @@ export default function TowerOfHanoi({ difficulty, onComplete }: TowerOfHanoiPro
           const disk = newTowers[selectedTower].pop()!
           newTowers[towerIndex].push(disk)
 
+          // Track the move with timestamp
+          const moveHistoryEntry = {
+            from: selectedTower,
+            to: towerIndex,
+            time: Date.now() - startTime
+          }
+          
+          // Update all state at once to prevent race conditions
           setTowers(newTowers)
           setSelectedTower(null)
-          setMoves(moves + 1)
-
-          // Record move
-          setMoveHistory([
-            ...moveHistory,
-            {
-              from: selectedTower,
-              to: towerIndex,
-              time: Date.now() - startTime,
-            },
-          ])
-
-          // Check if game is complete
-          if (towerIndex === 2 && newTowers[2].length === disks) {
-            gameComplete()
+          setMoveHistory(prev => [...prev, moveHistoryEntry])
+          setMoves(prev => prev + 1)
+          
+          // Manual check for immediate feedback
+          if (newTowers[2].length === disks && !gameCompletedRef.current) {
+            gameCompletedRef.current = true
+            // Small delay to allow state updates to complete
+            setTimeout(() => finishGame(), 100)
           }
         } else {
           // Invalid move, just deselect
@@ -126,9 +134,15 @@ export default function TowerOfHanoi({ difficulty, onComplete }: TowerOfHanoiPro
     }
   }
 
-  const gameComplete = () => {
+  const finishGame = () => {
+    console.log("Tower of Hanoi: finishGame called, isPlaying=", isPlaying, "gameCompletedRef=", gameCompletedRef.current);
+    
+    // If already completed, don't do anything
+    if (!isPlaying || !gameCompletedRef.current) return
+    
+    // Stop the game
     setIsPlaying(false)
-
+    
     // Calculate metrics
     const totalTime = (Date.now() - startTime) / 1000 // in seconds
     const efficiency = optimalMoves > 0 ? (optimalMoves / moves) * 100 : 0
@@ -145,8 +159,8 @@ export default function TowerOfHanoi({ difficulty, onComplete }: TowerOfHanoiPro
     const moveTimeStdDev = calculateStandardDeviation(moveTimes)
     const planningScore = calculatePlanningScore(efficiency, moveTimeStdDev)
 
-    // Send metrics to parent
-    onComplete({
+    // Create the metrics object
+    const metrics = {
       totalTime,
       moves,
       optimalMoves,
@@ -154,7 +168,20 @@ export default function TowerOfHanoi({ difficulty, onComplete }: TowerOfHanoiPro
       avgMoveTime,
       planningScore,
       problemSolvingScore: calculateProblemSolvingScore(totalTime, moves, optimalMoves),
-    })
+    }
+    
+    console.log("Tower of Hanoi: Calling onComplete with metrics:", metrics);
+    
+    // Call immediately - the delay might be causing issues
+    onComplete(metrics);
+  }
+
+  // Add a restart button that's clear and prominent
+  const handleManualComplete = () => {
+    if (!gameCompletedRef.current) {
+      gameCompletedRef.current = true
+      finishGame()
+    }
   }
 
   const calculateStandardDeviation = (values: number[]) => {
@@ -182,6 +209,16 @@ export default function TowerOfHanoi({ difficulty, onComplete }: TowerOfHanoiPro
 
     return Math.round((moveRatio * 100 + timeScore) / 2)
   }
+
+  const diskColors = [
+    "bg-red-500",
+    "bg-orange-500",
+    "bg-yellow-500",
+    "bg-green-500",
+    "bg-blue-500",
+    "bg-indigo-500",
+    "bg-purple-500",
+  ]
 
   return (
     <div className="flex flex-col items-center">
@@ -225,6 +262,16 @@ export default function TowerOfHanoi({ difficulty, onComplete }: TowerOfHanoiPro
         ))}
       </div>
 
+      {/* Add a clear button for manual completion if needed */}
+      {isPlaying && (
+        <Button 
+          onClick={handleManualComplete}
+          className="mt-4 bg-green-500 hover:bg-green-600" 
+        >
+          Complete Game
+        </Button>
+      )}
+      
       {!isPlaying && <Button onClick={startGame}>Restart Game</Button>}
     </div>
   )

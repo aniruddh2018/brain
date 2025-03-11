@@ -10,11 +10,13 @@ import SpatialPattern from "@/components/games/spatial-pattern"
 import MazeRun from "@/components/games/maze-run"
 import StroopChallenge from "@/components/games/stroop-challenge"
 import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
 
 export default function GamesPage() {
   const router = useRouter()
   const [userData, setUserData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [debugInfo, setDebugInfo] = useState<string>("")
 
   useEffect(() => {
     // Get user data from localStorage
@@ -24,12 +26,25 @@ export default function GamesPage() {
       return
     }
 
-    setUserData(JSON.parse(storedData))
+    // Log data loading
+    const parsedData = JSON.parse(storedData)
+    console.log("Loaded user data:", parsedData)
+    setUserData(parsedData)
     setLoading(false)
   }, [router])
 
   const handleGameComplete = (gameMetrics: any) => {
-    if (!userData) return
+    // Debug logging
+    console.log("Game completed with metrics:", gameMetrics)
+    setDebugInfo(`Game ${userData?.gameIndex} completed`)
+    
+    if (!userData) {
+      console.error("No user data available when completing game")
+      return
+    }
+
+    const currentGameName = getGameName(userData.gameIndex)
+    console.log(`Completing ${currentGameName}, current index: ${userData.gameIndex}`)
 
     // Update game index and store metrics
     const updatedUserData = {
@@ -37,14 +52,47 @@ export default function GamesPage() {
       gameIndex: userData.gameIndex + 1,
       metrics: {
         ...userData.metrics,
-        [getGameName(userData.gameIndex)]: gameMetrics,
+        [currentGameName]: gameMetrics,
       },
     }
 
+    console.log("Updating to:", updatedUserData)
+    
+    // Save to localStorage
     localStorage.setItem("userData", JSON.stringify(updatedUserData))
+    
+    // Update state
     setUserData(updatedUserData)
+    setDebugInfo(`${currentGameName} completed, moving to game ${updatedUserData.gameIndex}`)
 
     // If all games are completed, go to results page
+    if (updatedUserData.gameIndex >= 6) {
+      console.log("All games completed, navigating to results")
+      router.push("/results")
+    }
+  }
+
+  // Force move to next game (for debugging)
+  const forceNextGame = () => {
+    if (!userData) return
+    
+    const updatedUserData = {
+      ...userData,
+      gameIndex: userData.gameIndex + 1,
+      metrics: {
+        ...userData.metrics,
+        [getGameName(userData.gameIndex)]: { 
+          // Default metrics
+          totalTime: 60,
+          accuracy: 70,
+          score: 75
+        },
+      },
+    }
+    
+    localStorage.setItem("userData", JSON.stringify(updatedUserData))
+    setUserData(updatedUserData)
+    
     if (updatedUserData.gameIndex >= 6) {
       router.push("/results")
     }
@@ -72,7 +120,7 @@ export default function GamesPage() {
       case 5:
         return <StroopChallenge difficulty={userData.difficulty} onComplete={handleGameComplete} />
       default:
-        return null
+        return <div>All games completed</div>
     }
   }
 
@@ -91,6 +139,17 @@ export default function GamesPage() {
           <p className="text-center text-gray-600 mb-2">
             Player: {userData.name} | Age: {userData.age} | Difficulty: {userData.difficulty}
           </p>
+          
+          {/* Debug info and controls */}
+          <div className="mt-4 text-sm text-gray-500">
+            <p>Current game: {getGameName(userData.gameIndex)}</p>
+            {debugInfo && <p className="text-blue-500">{debugInfo}</p>}
+            <div className="mt-2 flex justify-center">
+              <Button variant="outline" size="sm" onClick={forceNextGame}>
+                Skip to Next Game
+              </Button>
+            </div>
+          </div>
         </div>
 
         <GameContainer>{getCurrentGame()}</GameContainer>

@@ -1,4 +1,5 @@
-import type { LucideIcon } from "lucide-react"
+import { LucideIcon } from "lucide-react"
+import { Card } from "@/components/ui/card"
 
 interface RecommendationCardProps {
   title: string
@@ -8,25 +9,17 @@ interface RecommendationCardProps {
 
 export default function RecommendationCard({ title, description, icon: Icon }: RecommendationCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
-      <div className="bg-indigo-50 p-4 flex items-center">
-        <div className="bg-indigo-100 p-2 rounded-full mr-3">
-          <Icon className="h-5 w-5 text-indigo-600" />
+    <Card className="p-5 shadow-md hover:shadow-lg transition-shadow">
+      <div className="flex items-start">
+        <div className="mr-4 bg-blue-100 p-3 rounded-full">
+          <Icon className="h-6 w-6 text-blue-600" />
         </div>
-        <h3 className="font-semibold text-indigo-900">{title}</h3>
-      </div>
-      <div className="p-4">
-        <p className="text-gray-600 text-sm">{description}</p>
-        <div className="mt-4 flex justify-end">
-          <button className="text-indigo-600 text-sm font-medium hover:text-indigo-800 flex items-center">
-            Learn more
-            <svg className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+        <div>
+          <h3 className="font-semibold text-lg mb-2">{title}</h3>
+          <p className="text-gray-600">{description}</p>
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
 
