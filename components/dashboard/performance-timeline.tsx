@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import {
-  Chart,
+  Chart as ChartJS,
   LineController,
   CategoryScale,
   LinearScale,
@@ -14,7 +14,7 @@ import {
   type ChartOptions,
 } from "chart.js"
 
-Chart.register(LineController, CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip)
+ChartJS.register(LineController, CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip)
 
 interface PerformanceTimelineProps {
   data: ChartData<"line">
@@ -22,7 +22,7 @@ interface PerformanceTimelineProps {
 
 export default function PerformanceTimeline({ data }: PerformanceTimelineProps) {
   const chartRef = useRef<HTMLCanvasElement>(null)
-  const chartInstance = useRef<Chart | null>(null)
+  const chartInstance = useRef<ChartJS | null>(null)
 
   useEffect(() => {
     if (!chartRef.current) return
@@ -46,7 +46,9 @@ export default function PerformanceTimeline({ data }: PerformanceTimelineProps) 
         },
         y: {
           beginAtZero: false,
-          min: Math.max(0, Math.min(...data.datasets[0].data) - 10),
+          min: data.datasets[0].data.length > 0 
+            ? Math.max(0, Math.min(...data.datasets[0].data.filter((value): value is number => typeof value === 'number')) - 10) 
+            : 0,
           max: 100,
           ticks: {
             stepSize: 10,
@@ -81,7 +83,7 @@ export default function PerformanceTimeline({ data }: PerformanceTimelineProps) 
     }
 
     // Create new chart
-    chartInstance.current = new Chart(ctx, {
+    chartInstance.current = new ChartJS(ctx, {
       type: "line",
       data,
       options,

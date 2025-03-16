@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import {
-  Chart,
+  Chart as ChartJS,
   BarController,
   CategoryScale,
   LinearScale,
@@ -13,7 +13,7 @@ import {
   type ChartOptions,
 } from "chart.js"
 
-Chart.register(BarController, CategoryScale, LinearScale, BarElement, Tooltip, Legend)
+ChartJS.register(BarController, CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
 interface ComparisonChartProps {
   data: ChartData<"bar">
@@ -21,7 +21,7 @@ interface ComparisonChartProps {
 
 export default function ComparisonChart({ data }: ComparisonChartProps) {
   const chartRef = useRef<HTMLCanvasElement>(null)
-  const chartInstance = useRef<Chart | null>(null)
+  const chartInstance = useRef<ChartJS | null>(null)
 
   useEffect(() => {
     if (!chartRef.current) return
@@ -77,7 +77,7 @@ export default function ComparisonChart({ data }: ComparisonChartProps) {
     }
 
     // Create new chart
-    chartInstance.current = new Chart(ctx, {
+    chartInstance.current = new ChartJS(ctx, {
       type: "bar",
       data,
       options,

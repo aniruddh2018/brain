@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Loader2 } from "lucide-react"
+import { saveUserData } from "@/lib/supabase-client" // Import directly from supabase-client
 
 export default function UserForm() {
   const router = useRouter()
@@ -16,6 +18,7 @@ export default function UserForm() {
     age: "",
     education: "elementary",
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -26,30 +29,59 @@ export default function UserForm() {
     setFormData((prev) => ({ ...prev, education: value }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
 
-    // Calculate difficulty based on age
-    let difficulty = "medium"
-    const age = Number.parseInt(formData.age)
+    try {
+      // Calculate difficulty based on age
+      let difficulty = "medium"
+      const age = Number.parseInt(formData.age)
 
-    if (age < 10) difficulty = "easy"
-    else if (age >= 10 && age < 18) difficulty = "medium"
-    else difficulty = "hard"
+      if (age < 10) difficulty = "easy"
+      else if (age >= 10 && age < 18) difficulty = "medium"
+      else difficulty = "hard"
 
-    // Store user data in localStorage
-    localStorage.setItem(
-      "userData",
-      JSON.stringify({
-        ...formData,
+      // Create user data object
+      const userData = {
+        name: formData.name,
+        age,
+        education: formData.education,
         difficulty,
-        gameIndex: 0,
-        metrics: {},
-        startTime: new Date().toISOString(),
-      }),
-    )
+        id: crypto.randomUUID()
+      }
 
-    router.push("/games")
+      // Save to Supabase directly
+      try {
+        const savedUser = await saveUserData(userData)
+        console.log("User saved to Supabase:", savedUser)
+        
+        // Store ID for future use
+        if (savedUser?.[0]?.id) {
+          localStorage.setItem('userId', savedUser[0].id)
+        }
+      } catch (supabaseError) {
+        console.error("Failed to save to Supabase, continuing with local storage:", supabaseError)
+      }
+
+      // Also store in localStorage for backwards compatibility
+      localStorage.setItem(
+        "userData",
+        JSON.stringify({
+          ...userData,
+          gameIndex: 0,
+          metrics: {},
+          startTime: new Date().toISOString(),
+        }),
+      )
+
+      router.push("/games")
+    } catch (error) {
+      console.error("Error saving user data:", error)
+      alert("There was an error saving your profile. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -63,6 +95,7 @@ export default function UserForm() {
           value={formData.name}
           onChange={handleChange}
           required
+          disabled={isSubmitting}
         />
       </div>
 
@@ -78,12 +111,17 @@ export default function UserForm() {
           min="5"
           max="99"
           required
+          disabled={isSubmitting}
         />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="education">Education Level</Label>
-        <Select value={formData.education} onValueChange={handleEducationChange}>
+        <Select 
+          value={formData.education} 
+          onValueChange={handleEducationChange}
+          disabled={isSubmitting}
+        >
           <SelectTrigger>
             <SelectValue placeholder="Select education level" />
           </SelectTrigger>
@@ -98,8 +136,15 @@ export default function UserForm() {
         </Select>
       </div>
 
-      <Button type="submit" className="w-full">
-        Start Assessment
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Creating Profile...
+          </>
+        ) : (
+          "Start Assessment"
+        )}
       </Button>
     </form>
   )

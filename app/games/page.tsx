@@ -11,15 +11,113 @@ import MazeRun from "@/components/games/maze-run"
 import StroopChallenge from "@/components/games/stroop-challenge"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
+import { 
+  Brain, 
+  Blocks, 
+  BookOpen, 
+  Layers, 
+  Compass, 
+  Activity 
+} from "lucide-react"
+import { saveGameMetrics } from "@/lib" // Import from lib/index.ts
+import { supabase } from "@/lib/supabase-fixed" // Add direct import for Supabase client
+import { 
+  GameData,
+  BaseGameMetrics,
+  MemoryMatchMetrics,
+  TowerOfHanoiMetrics,
+  WordPuzzleMetrics,
+  SpatialPatternMetrics,
+  MazeRunMetrics,
+  StroopChallengeMetrics,
+  GameMetrics
+} from "@/types/cognitive-new/games"
+
+// Define interfaces for user data
+interface UserData {
+  id: string;
+  name: string;
+  age: number;
+  education: string;
+  difficulty: string;
+  gameIndex: number;
+  metrics: {
+    [key: string]: any;
+  };
+}
+
+// Add this function near the top of the component, before the useEffect hook
+const saveGameMetricsToSupabase = async (userId: string, gameData: any) => {
+  try {
+    // Log the data being sent to help debug
+    console.log('Directly saving game metrics to Supabase:', {
+      user_id: userId,
+      game_name: gameData.name,
+      is_skipped: gameData.is_skipped || false
+    });
+    
+    // Format metrics to avoid circular references
+    let cleanMetrics;
+    try {
+      cleanMetrics = JSON.parse(JSON.stringify(gameData.metrics || {}));
+    } catch (jsonError) {
+      console.error('Error stringifying metrics:', jsonError);
+      cleanMetrics = { error: 'Failed to stringify metrics' };
+    }
+    
+    // Try a direct insert using the Supabase client
+    const { data, error } = await supabase
+      .from('game_metrics')
+      .insert({
+        user_id: userId,
+        game_name: gameData.name,
+        metrics: cleanMetrics,
+        completed_at: new Date().toISOString(),
+        is_skipped: gameData.is_skipped || false
+      })
+      .select();
+    
+    if (error) {
+      // Log specific error details
+      console.error('Direct Supabase error:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      throw error;
+    }
+    
+    console.log('Game metrics saved successfully:', data);
+    return data;
+  } catch (error: any) {
+    // Capture detailed error information
+    console.error('Error directly saving game metrics:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name,
+      stack: error?.stack?.toString().split('\n')[0] || 'No stack trace'
+    });
+    
+    // Also try to log the error object itself
+    try {
+      console.error('Raw error:', error);
+    } catch (e) {
+      console.error('Could not log raw error');
+    }
+    
+    throw error;
+  }
+};
 
 export default function GamesPage() {
   const router = useRouter()
-  const [userData, setUserData] = useState<any>(null)
+  const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
   const [debugInfo, setDebugInfo] = useState<string>("")
+  const [savingGame, setSavingGame] = useState(false)
 
   useEffect(() => {
-    // Get user data from localStorage
+    // Get user data from localStorage (will be replaced with Supabase in future)
     const storedData = localStorage.getItem("userData")
     if (!storedData) {
       router.push("/")
@@ -33,7 +131,7 @@ export default function GamesPage() {
     setLoading(false)
   }, [router])
 
-  const handleGameComplete = (gameMetrics: any) => {
+  const handleGameComplete = async (gameMetrics: GameMetrics) => {
     // Debug logging
     console.log("Game completed with metrics:", gameMetrics)
     setDebugInfo(`Game ${userData?.gameIndex} completed`)
@@ -45,6 +143,35 @@ export default function GamesPage() {
 
     const currentGameName = getGameName(userData.gameIndex)
     console.log(`Completing ${currentGameName}, current index: ${userData.gameIndex}`)
+
+    // Save game metrics to Supabase (and localStorage for backward compatibility)
+    const userId = localStorage.getItem('userId')
+    if (userId && !savingGame) {
+      try {
+        setSavingGame(true)
+        
+        // Log the data being sent to help debug
+        console.log('Saving completed game metrics:', {
+          name: currentGameName,
+          metrics: gameMetrics,
+          is_skipped: false
+        });
+        
+        const result = await saveGameMetrics(userId, {
+          name: currentGameName,
+          metrics: gameMetrics,
+          is_skipped: false
+        });
+        
+        console.log(`Game metrics saved to Supabase for ${currentGameName}:`, result);
+      } catch (error) {
+        console.error("Error saving game metrics to Supabase:", error);
+      } finally {
+        setSavingGame(false)
+      }
+    } else if (!userId) {
+      console.error("No user ID found in localStorage");
+    }
 
     // Update game index and store metrics
     const updatedUserData = {
@@ -73,20 +200,120 @@ export default function GamesPage() {
   }
 
   // Force move to next game (for debugging)
-  const forceNextGame = () => {
+  const forceNextGame = async () => {
     if (!userData) return
+    
+    const currentGameName = getGameName(userData.gameIndex);
+    const userDifficulty = userData.difficulty;
+    
+    // Create base metrics for skipped game - ensure is_skipped is set
+    let gameMetrics: any; // Use any temporarily to allow for additional fields
+    
+    // Define minimal base metrics for skipped games
+    const baseSkippedMetrics = {
+      score: 0,
+      timeSpent: 0,
+      difficulty: userDifficulty,
+      is_skipped: true
+    };
+    
+    switch(currentGameName) {
+      case "memoryMatch":
+        gameMetrics = {
+          ...baseSkippedMetrics,
+          memoryScore: null, // Set to null to indicate skipped
+          memory: null, // Add this to match possible alternate property name
+          matchesMade: 0,
+          incorrectAttempts: 0,
+          averageMatchTime: 0
+        };
+        break;
+      case "towerOfHanoi":
+        gameMetrics = {
+          ...baseSkippedMetrics,
+          planningScore: null, // Set to null
+          problemSolvingScore: null, // This is the field used in results page
+          movesCount: 0,
+          optimalMovesRatio: 0,
+          timePerMove: 0
+        };
+        break;
+      case "wordPuzzle":
+        gameMetrics = {
+          ...baseSkippedMetrics,
+          languageScore: null,
+          vocabularyScore: null, // This is the field used in results page
+          wordsFound: 0,
+          hintsUsed: 0,
+          averageWordLength: 0
+        };
+        break;
+      case "spatialPattern":
+        gameMetrics = {
+          ...baseSkippedMetrics,
+          spatialScore: null, // This is used in results page
+          spatialReasoningScore: null, // Add this to match the expected property name
+          patternsCompleted: 0,
+          accuracyRate: 0,
+          complexityLevel: 0
+        };
+        break;
+      case "mazeRun":
+        gameMetrics = {
+          ...baseSkippedMetrics,
+          navigationScore: null,
+          spatialNavigationScore: null, // This is used in results page
+          pathEfficiency: 0,
+          deadEndsEncountered: 0,
+          completionSpeed: 0
+        };
+        break;
+      case "stroopChallenge":
+      default:
+        // Default to Stroop Challenge metrics if game name is not recognized
+        gameMetrics = {
+          ...baseSkippedMetrics,
+          attentionScore: null,
+          cognitiveFlexibilityScore: null, // This is used in results page
+          correctResponses: 0,
+          incorrectResponses: 0,
+          averageResponseTime: 0,
+          interferenceEffect: 0
+        };
+    }
+    
+    // Save skipped game metrics to Supabase
+    const userId = localStorage.getItem('userId')
+    if (userId && !savingGame) {
+      try {
+        setSavingGame(true)
+        
+        // Log the data being sent to help debug
+        console.log('Saving skipped game metrics:', {
+          name: currentGameName,
+          metrics: gameMetrics,
+          is_skipped: true
+        });
+        
+        await saveGameMetricsToSupabase(userId, {
+          name: currentGameName,
+          metrics: gameMetrics,
+          is_skipped: true
+        });
+        console.log(`Skipped game metrics saved to Supabase for ${currentGameName}`);
+      } catch (error) {
+        console.error("Error saving skipped game metrics to Supabase:", error);
+      } finally {
+        setSavingGame(false)
+      }
+    }
     
     const updatedUserData = {
       ...userData,
       gameIndex: userData.gameIndex + 1,
       metrics: {
         ...userData.metrics,
-        [getGameName(userData.gameIndex)]: { 
-          // Default metrics
-          totalTime: 60,
-          accuracy: 70,
-          score: 75
-        },
+        [currentGameName]: gameMetrics,
       },
     }
     
@@ -101,6 +328,83 @@ export default function GamesPage() {
   const getGameName = (index: number) => {
     const games = ["memoryMatch", "towerOfHanoi", "wordPuzzle", "spatialPattern", "mazeRun", "stroopChallenge"]
     return games[index]
+  }
+  
+  // Helper function to add game-specific scores
+  const addGameSpecificScores = (gameName: string, baseMetrics: any) => {
+    const metrics = { ...baseMetrics };
+    
+    // If game is skipped, set all scores to null
+    if (metrics.is_skipped === true) {
+      switch(gameName) {
+        case "memoryMatch":
+          metrics.memoryScore = null;
+          metrics.memory = null;
+          break;
+        case "towerOfHanoi":
+          metrics.planningScore = null;
+          metrics.problemSolvingScore = null;
+          break;
+        case "wordPuzzle":
+          metrics.languageScore = null;
+          metrics.vocabularyScore = null;
+          break;
+        case "spatialPattern":
+          metrics.spatialScore = null;
+          metrics.spatialReasoningScore = null;
+          break;
+        case "mazeRun":
+          metrics.navigationScore = null;
+          metrics.spatialNavigationScore = null;
+          break;
+        case "stroopChallenge":
+          metrics.attentionScore = null;
+          metrics.cognitiveFlexibilityScore = null;
+          break;
+      }
+      return metrics;
+    }
+    
+    // For non-skipped games, add specific score fields
+    switch(gameName) {
+      case "memoryMatch":
+        metrics.memoryScore = 70;
+        break;
+      case "towerOfHanoi":
+        metrics.planningScore = 70;
+        metrics.problemSolvingScore = 70;
+        break;
+      case "wordPuzzle":
+        metrics.vocabularyScore = 70;
+        break;
+      case "spatialPattern":
+        metrics.spatialScore = 70;
+        break;
+      case "mazeRun":
+        metrics.navigationScore = 70;
+        metrics.spatialNavigationScore = 70;
+        break;
+      case "stroopChallenge":
+        metrics.cognitiveFlexibilityScore = 70;
+        break;
+    }
+    
+    return metrics;
+  }
+
+  // Format game name for display
+  const getFormattedGameName = (index: number) => {
+    const gameNames = {
+      "memoryMatch": { name: "Memory Match", icon: Brain },
+      "towerOfHanoi": { name: "Tower of Hanoi", icon: Blocks },
+      "wordPuzzle": { name: "Word Puzzle", icon: BookOpen },
+      "spatialPattern": { name: "Spatial Pattern", icon: Layers },
+      "mazeRun": { name: "Maze Run", icon: Compass },
+      "stroopChallenge": { name: "Stroop Challenge", icon: Activity }
+    }
+    
+    const gameName = getGameName(index)
+    return gameNames[gameName as keyof typeof gameNames] || { name: "Unknown Game", icon: Brain }
   }
 
   const getCurrentGame = () => {
@@ -124,37 +428,93 @@ export default function GamesPage() {
     }
   }
 
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h1 className="text-2xl font-bold text-center mb-4">
-            {userData.gameIndex < 6 ? `Game ${userData.gameIndex + 1} of 6` : "Assessment Complete"}
-          </h1>
-          <Progress value={(userData.gameIndex / 6) * 100} className="h-2 mb-4" />
-          <p className="text-center text-gray-600 mb-2">
-            Player: {userData.name} | Age: {userData.age} | Difficulty: {userData.difficulty}
-          </p>
-          
-          {/* Debug info and controls */}
-          <div className="mt-4 text-sm text-gray-500">
-            <p>Current game: {getGameName(userData.gameIndex)}</p>
-            {debugInfo && <p className="text-blue-500">{debugInfo}</p>}
-            <div className="mt-2 flex justify-center">
-              <Button variant="outline" size="sm" onClick={forceNextGame}>
-                Skip to Next Game
+    <main className="min-h-screen bg-gray-50 py-6">
+      <div className="container mx-auto px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Loading state */}
+          {loading ? (
+            <div className="flex justify-center items-center min-h-[400px]">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+            </div>
+          ) : userData ? (
+            <>
+              {/* Game controls header */}
+              <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
+                <div className="flex flex-col gap-1">
+                  <h1 className="text-2xl font-bold">Cognitive Assessment</h1>
+                  <p className="text-gray-500 text-sm">Complete a series of games to measure different cognitive abilities</p>
+                </div>
+
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-indigo-100 text-indigo-800 font-bold text-lg h-8 w-8 rounded-full flex items-center justify-center">
+                      {userData.gameIndex + 1}
+                    </div>
+                    <span className="text-sm text-gray-500">of 6</span>
+                    <Progress value={(userData.gameIndex / 6) * 100} className="h-2 w-24 md:w-32 ml-2" />
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-medium">{userData.name}</span>
+                    <span className="text-xs text-gray-500">{userData.age}y</span>
+                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs ml-1">{userData.difficulty}</span>
+                  </div>
+                  
+                  <Button variant="outline" size="sm" className="h-8 text-xs px-2 py-1" onClick={forceNextGame}>
+                    Skip game
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Debug info (only in development) */}
+              {process.env.NODE_ENV === "development" && (
+                <div className="mb-4 p-2 border border-gray-200 rounded-md bg-gray-50">
+                  <p className="text-xs text-gray-500">{debugInfo}</p>
+                </div>
+              )}
+              
+              {/* Current game */}
+              <div className="mb-8">
+                <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-1.5 rounded-full text-white shadow-md flex items-center gap-2 animate-badge-pulse hover:scale-105 transition-transform">
+                  {(() => {
+                    const gameInfo = getFormattedGameName(userData.gameIndex);
+                    const GameIcon = gameInfo.icon
+                    return (
+                      <>
+                        <GameIcon className="h-4 w-4 animate-subtle-bounce" />
+                        <span className="text-sm font-medium">{gameInfo.name}</span>
+                      </>
+                    )
+                  })()}
+                </div>
+                
+                <GameContainer>
+                  {getCurrentGame()}
+                </GameContainer>
+              </div>
+              
+              {/* Footer info */}
+              <div className="text-center">
+                <p className="text-sm text-gray-500">
+                  Complete all games to receive your cognitive assessment report
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="p-8 text-center">
+              <p>No user data found. Please return to the home page and create a profile.</p>
+              <Button 
+                className="mt-4" 
+                onClick={() => router.push("/")}
+              >
+                Go to Home
               </Button>
             </div>
-          </div>
+          )}
         </div>
-
-        <GameContainer>{getCurrentGame()}</GameContainer>
       </div>
-    </div>
+    </main>
   )
 }
 

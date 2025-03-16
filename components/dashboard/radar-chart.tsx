@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import {
-  Chart,
+  Chart as ChartJS,
   type ChartData,
   type ChartOptions,
   RadarController,
@@ -14,7 +14,7 @@ import {
   Legend,
 } from "chart.js"
 
-Chart.register(RadarController, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend)
+ChartJS.register(RadarController, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend)
 
 interface CognitiveRadarChartProps {
   data: ChartData<"radar">
@@ -22,7 +22,7 @@ interface CognitiveRadarChartProps {
 
 export default function CognitiveRadarChart({ data }: CognitiveRadarChartProps) {
   const chartRef = useRef<HTMLCanvasElement>(null)
-  const chartInstance = useRef<Chart | null>(null)
+  const chartInstance = useRef<ChartJS | null>(null)
 
   useEffect(() => {
     if (!chartRef.current) return
@@ -90,7 +90,7 @@ export default function CognitiveRadarChart({ data }: CognitiveRadarChartProps) 
     }
 
     // Create new chart
-    chartInstance.current = new Chart(ctx, {
+    chartInstance.current = new ChartJS(ctx, {
       type: "radar",
       data,
       options,

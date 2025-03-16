@@ -168,38 +168,58 @@ export default function MemoryMatch({ difficulty, onComplete }: MemoryMatchProps
       <h2 className="text-2xl font-bold mb-4">Memory Match</h2>
       <p className="mb-6 text-center">Flip cards to find matching pairs. Remember the positions to match all cards.</p>
 
-      <div className="flex justify-between w-full mb-4">
-        <div className="text-sm">
-          <p>Moves: {moves}</p>
-          <p>Matches: {matches}</p>
+      <div className="flex justify-between items-center w-full mb-3">
+        <div className="flex gap-3">
+          <div className="text-sm font-medium">
+            <span>Moves: </span>
+            <span className="font-bold">{moves}</span>
+          </div>
+          <div className="text-sm font-medium">
+            <span>Matches: </span>
+            <span className="font-bold">{matches}</span>
+          </div>
         </div>
-        <div className="flex items-center text-sm">
-          <Hourglass className="w-4 h-4 mr-1" />
+        
+        <div className="flex items-center text-sm font-medium">
+          <Hourglass className="w-3 h-3 mr-1" />
           <span>{(gameTime / 1000).toFixed(1)}s</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 mb-6">
+      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3 mb-3 w-full justify-items-center">
         {cards.map((card) => (
           <div
             key={card.id}
-            className={`w-16 h-16 sm:w-20 sm:h-20 cursor-pointer transition-all duration-300 transform ${
-              card.flipped || card.matched ? "rotate-y-180" : ""
+            className={`aspect-square w-full max-w-[80px] perspective-500 cursor-pointer transform transition-transform ${
+              card.matched ? "opacity-70" : ""
             }`}
             onClick={() => handleCardClick(card)}
           >
-            <Card
-              className={`w-full h-full flex items-center justify-center text-2xl sm:text-3xl ${
-                card.flipped || card.matched ? "bg-blue-100" : "bg-gray-200"
+            <div
+              className={`w-full h-full relative transition-all duration-300 transform-style-3d ${
+                card.flipped ? "rotate-y-180" : ""
               }`}
             >
-              {card.flipped || card.matched ? card.emoji : ""}
-            </Card>
+              <div className="absolute w-full h-full rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white backface-hidden shadow-md">
+                <span className="text-2xl">?</span>
+              </div>
+              <div className="absolute w-full h-full rounded-lg bg-white flex items-center justify-center rotate-y-180 backface-hidden border-2 border-indigo-200 shadow-md">
+                <span className="text-3xl">{card.emoji}</span>
+              </div>
+            </div>
           </div>
         ))}
       </div>
 
-      {!isPlaying && <Button onClick={startGame}>Restart Game</Button>}
+      {!isPlaying && (
+        <Button 
+          onClick={startGame} 
+          size="lg"
+          className="mt-3 rounded-full text-base h-10 min-w-[120px] bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md hover:opacity-90 hover:shadow-lg transition-all"
+        >
+          {matches > 0 ? "Play Again" : "Start Game"}
+        </Button>
+      )}
     </div>
   )
 }

@@ -298,7 +298,7 @@ export default function MazeRun({ difficulty, onComplete }: MazeRunProps) {
       closedSet.add(posKey({ x: current.x, y: current.y }))
       
       // Check neighbors
-      const directions = [
+    const directions = [
         { dx: 0, dy: -1 }, // up
         { dx: 1, dy: 0 },  // right
         { dx: 0, dy: 1 },  // down
@@ -476,7 +476,7 @@ export default function MazeRun({ difficulty, onComplete }: MazeRunProps) {
         newSet.add(posKey)
         return newSet
       })
-      
+
       // Check if reached goal
       if (newX === goalPosition.x && newY === goalPosition.y) {
         gameComplete()
@@ -491,7 +491,7 @@ export default function MazeRun({ difficulty, onComplete }: MazeRunProps) {
     gameCompletedRef.current = true
     setIsPlaying(false)
     setShowOptimalPath(true)
-    
+
     // Calculate metrics
     const totalTime = (Date.now() - startTime) / 1000
     
@@ -637,7 +637,7 @@ export default function MazeRun({ difficulty, onComplete }: MazeRunProps) {
         <div>Time: {(gameTime / 1000).toFixed(1)}s</div>
         <div>Moves: {moveHistory.length - 1}</div>
       </div>
-      
+
       {/* Maze grid with better styling */}
       <div className="mb-6 border-2 border-gray-600 bg-white rounded-md overflow-hidden shadow-lg">
         <div
@@ -657,7 +657,7 @@ export default function MazeRun({ difficulty, onComplete }: MazeRunProps) {
           )}
         </div>
       </div>
-      
+
       {/* Controls with clearer buttons */}
       <div className="grid grid-cols-3 gap-2 mb-4 w-48">
         <div></div>
@@ -669,7 +669,7 @@ export default function MazeRun({ difficulty, onComplete }: MazeRunProps) {
           <ArrowUp className="h-6 w-6" />
         </Button>
         <div></div>
-        
+
         <Button 
           variant="outline" 
           onClick={() => handleDirectionClick(-1, 0)}
@@ -696,7 +696,7 @@ export default function MazeRun({ difficulty, onComplete }: MazeRunProps) {
         >
           <ArrowRight className="h-6 w-6" />
         </Button>
-        
+
         <div></div>
         <Button 
           variant="outline" 
@@ -707,7 +707,7 @@ export default function MazeRun({ difficulty, onComplete }: MazeRunProps) {
         </Button>
         <div></div>
       </div>
-      
+
       {/* Game controls */}
       <div className="flex gap-4">
         {!isPlaying && (

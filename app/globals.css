@@ -92,3 +92,101 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* 3D Card Flip Effect */
+.perspective-500 {
+  perspective: 500px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Optimize for touch devices */
+@media (hover: none) {
+  .cursor-pointer {
+    cursor: default; /* Remove cursor pointer on touch devices */
+  }
+}
+
+/* Custom focus states for better accessibility */
+:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.6);
+  outline-offset: 2px;
+}
+
+/* Reduce motion if preferred */
+@media (prefers-reduced-motion) {
+  .transition-all, 
+  .transition-transform,
+  .animate-badge-pulse,
+  .animate-subtle-bounce,
+  .bg-gradient-to-r {
+    transition-duration: 0s !important;
+    animation: none !important;
+  }
+}
+
+/* Make elements properly fit viewport on mobile */
+html, body {
+  height: 100%;
+  max-height: -webkit-fill-available;
+}
+
+/* Prevent overflow scrolling */
+.overflow-hidden {
+  overflow: hidden;
+}
+
+/* Add animations for game badge and icon */
+@keyframes badge-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
+  }
+}
+
+@keyframes subtle-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.animate-badge-pulse {
+  animation: badge-pulse 3s infinite;
+}
+
+.animate-subtle-bounce {
+  animation: subtle-bounce 2s ease-in-out infinite;
+}
+
+/* Make the badge more readable for children */
+.bg-gradient-to-r {
+  background-size: 200% 100%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Hourglass } from "lucide-react"
+import { StroopChallengeMetrics } from "@/types/cognitive/game-metrics.types"
 
 interface StroopChallengeProps {
   difficulty: string
-  onComplete: (metrics: any) => void
+  onComplete: (metrics: StroopChallengeMetrics) => void
 }
 
 interface StroopItem {
@@ -132,6 +133,7 @@ export default function StroopChallenge({ difficulty, onComplete }: StroopChalle
     // Calculate metrics
     const totalTime = (Date.now() - startTime) / 1000 // in seconds
     const correctResponses = responses.filter((r) => r.correct).length
+    const incorrectResponses = responses.length - correctResponses
     const accuracy = (correctResponses / responses.length) * 100
 
     // Calculate average response time
@@ -161,18 +163,19 @@ export default function StroopChallenge({ difficulty, onComplete }: StroopChalle
     // Calculate cognitive flexibility score
     const flexibilityScore = calculateFlexibilityScore(accuracy, interferenceEffect)
 
+    // Calculate attention score
+    const attentionScore = calculateAttentionScore(accuracy, avgResponseTime)
+
     // Send metrics to parent
     onComplete({
-      totalTime,
+      score: Math.round((flexibilityScore + attentionScore) / 2), // Overall score
+      timeSpent: totalTime,
+      difficulty,
+      attentionScore,
       correctResponses,
-      totalItems: responses.length,
-      accuracy,
-      avgResponseTime,
-      avgCongruentTime,
-      avgIncongruentTime,
-      interferenceEffect,
-      cognitiveFlexibilityScore: flexibilityScore,
-      attentionControlScore: calculateAttentionScore(accuracy, avgResponseTime),
+      incorrectResponses,
+      averageResponseTime: avgResponseTime,
+      interferenceEffect
     })
   }
 

@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { Chart, ArcElement, Tooltip, type ChartData, type ChartOptions } from "chart.js"
+import { Chart as ChartJS, ArcElement, Tooltip, DoughnutController, type ChartData, type ChartOptions } from "chart.js"
 
-Chart.register(ArcElement, Tooltip)
+// Register both ArcElement and DoughnutController
+ChartJS.register(ArcElement, DoughnutController, Tooltip)
 
 interface ScoreGaugeProps {
   score: number
@@ -11,7 +12,7 @@ interface ScoreGaugeProps {
 
 export default function ScoreGauge({ score }: ScoreGaugeProps) {
   const chartRef = useRef<HTMLCanvasElement>(null)
-  const chartInstance = useRef<Chart | null>(null)
+  const chartInstance = useRef<ChartJS | null>(null)
 
   useEffect(() => {
     if (!chartRef.current) return
@@ -56,7 +57,7 @@ export default function ScoreGauge({ score }: ScoreGaugeProps) {
     }
 
     // Create new chart
-    chartInstance.current = new Chart(ctx, {
+    chartInstance.current = new ChartJS(ctx, {
       type: "doughnut",
       data,
       options,
