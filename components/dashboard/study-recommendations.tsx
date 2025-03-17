@@ -1,19 +1,23 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Book, Lightbulb, Users, Clock, Brain, Sparkles } from "lucide-react";
-import { DomainAnalysis, LearningStyleAnalysis } from "@/lib/report-generator";
+import { DomainAnalysis, LearningStyleAnalysis } from "@/lib";
 
 interface StudyRecommendationsProps {
   domainAnalyses: DomainAnalysis[];
   strengths: { name: string; score: number }[];
   weaknesses: { name: string; score: number }[];
-  learningStyles: LearningStyleAnalysis;
+  learningStyle: LearningStyleAnalysis & {
+    description?: string;
+    teachingStrategies?: string[];
+    accommodations?: string[];
+  };
 }
 
 export default function StudyRecommendations({ 
   domainAnalyses, 
   strengths, 
   weaknesses,
-  learningStyles
+  learningStyle
 }: StudyRecommendationsProps) {
   
   // Map learning style to icon
@@ -28,7 +32,7 @@ export default function StudyRecommendations({
       "Multimodal Learner": Lightbulb
     };
     
-    return styleIconMap[learningStyles.primaryStyle] || Lightbulb;
+    return styleIconMap[learningStyle.primaryStyle] || Lightbulb;
   };
   
   // Generate teaching strategies based on profile
@@ -89,11 +93,11 @@ export default function StudyRecommendations({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl">
             <LearningStyleIcon className="h-5 w-5 text-indigo-500" />
-            Learning Style: {learningStyles.primaryStyle}
+            Learning Style: {learningStyle.primaryStyle}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-700 mb-4">{learningStyles.description}</p>
+          <p className="text-gray-700 mb-4">{learningStyle.description}</p>
           
           <div className="grid gap-4 md:grid-cols-2">
             <div>
@@ -102,12 +106,12 @@ export default function StudyRecommendations({
                 Teaching Strategies
               </h3>
               <ul className="space-y-3">
-                {learningStyles.teachingStrategies.map((strategy, index) => (
+                {learningStyle.teachingStrategies?.map((strategy: string, index: number) => (
                   <li key={index} className="p-3 rounded-md bg-indigo-50 border border-indigo-100">
                     <p className="text-sm text-gray-700">{strategy}</p>
                   </li>
                 ))}
-                {additionalStrategies.map((strategy, index) => (
+                {additionalStrategies.map((strategy: { title: string; description: string; primary?: boolean }, index: number) => (
                   <li key={`additional-${index}`} className="p-3 rounded-md bg-gray-50">
                     <p className="font-medium text-sm">{strategy.title}</p>
                     <p className="text-sm text-gray-600">{strategy.description}</p>
@@ -122,7 +126,7 @@ export default function StudyRecommendations({
                 Classroom Accommodations
               </h3>
               <ul className="space-y-2">
-                {learningStyles.accommodations.map((accommodation, index) => (
+                {learningStyle.accommodations?.map((accommodation: string, index: number) => (
                   <li key={index} className="flex items-start gap-2">
                     <div className="mt-1 min-w-4">
                       <div className="h-2 w-2 rounded-full bg-blue-400" />

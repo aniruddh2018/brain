@@ -16,11 +16,12 @@ import ComparisonChart from "@/components/dashboard/comparison-chart"
 import RecommendationCard from "@/components/dashboard/recommendation-card"
 import PerformanceTimeline from "@/components/dashboard/performance-timeline"
 import { Loader2 } from "lucide-react"
-import { generateReport } from "@/lib/report-generator"
+import { generateReport } from "@/lib"
 import { useCognitiveAnalysis } from "@/lib/hooks/use-cognitive-analysis"
 import DomainDetail from "@/components/dashboard/domain-detail"
 import StudyRecommendations from "@/components/dashboard/study-recommendations"
 import { saveUserReport } from "@/lib"
+import type { DomainAnalysis } from "@/lib"
 
 // Import Chart.js components to fix doughnut error
 import {
@@ -355,7 +356,7 @@ export default function ResultsPage() {
     getDomainInsights,
     overallScore: enhancedOverallScore,
     summary,
-    getLearningStyles
+    getLearningStyle
   } = useCognitiveAnalysis(userData)
 
   // Original calculation function as fallback
@@ -493,8 +494,9 @@ export default function ResultsPage() {
             weaknesses: getStrengthsAndWeaknesses().weaknesses,
             domainAnalyses: getDomainInsights(),
             recommendations: getRecommendations(),
-            relationshipInsights: analysisData.relationshipInsights || [],
-            learningStyles: getLearningStyles()
+            // Cast to ExtendedCognitiveReport to access relationshipInsights
+            relationshipInsights: (analysisData as any).relationshipInsights || [],
+            learningStyle: getLearningStyle()
           };
           
           // Save to Supabase
@@ -503,7 +505,7 @@ export default function ResultsPage() {
         } catch (err) {
           console.error("Error saving report to Supabase:", err);
           // Don't set error state as it would disrupt the UI
-        } finally {
+    } finally {
           setSavingReport(false);
         }
       }
@@ -597,10 +599,10 @@ export default function ResultsPage() {
         'Navigation' + (scores.navigation === null ? ' (No Data)' : ''),
         'Cognitive Flexibility' + (scores.cognitiveFlexibility === null ? ' (No Data)' : '')
       ],
-      datasets: [
-        {
+    datasets: [
+      {
           label: 'Cognitive Performance',
-          data: [
+        data: [
             formatScore(scores.memory),
             formatScore(scores.problemSolving),
             formatScore(scores.vocabulary),
@@ -632,10 +634,10 @@ export default function ResultsPage() {
         'Navigation' + (scores.navigation === null ? ' (No Data)' : ''),
         'Flexibility' + (scores.cognitiveFlexibility === null ? ' (No Data)' : '')
       ],
-      datasets: [
-        {
+    datasets: [
+      {
           label: 'Your Scores',
-          data: [
+        data: [
             formatScore(scores.memory),
             formatScore(scores.problemSolving),
             formatScore(scores.vocabulary),
@@ -670,13 +672,13 @@ export default function ResultsPage() {
   }
 
   if (loading) {
-    return (
+  return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your assessment results...</p>
-        </div>
-      </div>
+            </div>
+            </div>
     )
   }
 
@@ -690,8 +692,8 @@ export default function ResultsPage() {
           <Button onClick={() => router.push("/")}>
             Go Home
           </Button>
-        </div>
-      </div>
+                      </div>
+                </div>
     )
   }
 
@@ -710,9 +712,9 @@ export default function ResultsPage() {
               <p className="text-gray-600 text-center">
                 We're processing your cognitive assessment data to provide personalized insights.
               </p>
-            </div>
-          </div>
-        </div>
+                              </div>
+                            </div>
+                          </div>
       ) : null}
       
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
@@ -721,16 +723,16 @@ export default function ResultsPage() {
             <div className="flex">
               <div className="flex-shrink-0">
                 <AlertTriangle className="h-5 w-5 text-amber-400" />
-              </div>
+                              </div>
               <div className="ml-3">
                 <p className="text-sm text-amber-700">
                   <span className="font-medium">Note:</span> Some games were skipped during your assessment. 
                   The results shown include estimated scores for those games, which may not accurately reflect your abilities.
                   For a more accurate assessment, consider completing all games.
                 </p>
-              </div>
-            </div>
-          </div>
+                            </div>
+                          </div>
+                      </div>
         )}
         
         <Card className="mb-6">
@@ -744,8 +746,8 @@ export default function ResultsPage() {
               </div>
               <div className="flex space-x-2">
                 <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
                       <Button
                         variant="outline"
                         size="icon"
@@ -754,14 +756,14 @@ export default function ResultsPage() {
                       >
                         <RotateCcw className="h-4 w-4" />
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
+                            </TooltipTrigger>
+                            <TooltipContent>
                       <p>Start Over</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                        </div>
           </CardHeader>
           
           <CardContent>
@@ -773,9 +775,9 @@ export default function ResultsPage() {
                 </h3>
                 <p className="mt-2 text-gray-700">
                   {summary}
-                </p>
-              </div>
-            </div>
+                          </p>
+                        </div>
+                      </div>
             
             <Tabs defaultValue="overview" onValueChange={setActiveTab}>
               <TabsList className="grid grid-cols-5 mb-6">
@@ -827,15 +829,16 @@ export default function ResultsPage() {
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-3">
-                        {strengths.map((strength, index) => (
+                        {strengths.map((strength: { name: string; score: number }, index: number) => (
                           <li key={index} className="flex items-center">
                             <div className={`w-12 h-12 flex items-center justify-center rounded-full ${getScoreBadgeColor(strength.score)} mr-3`}>
                               <span className="text-white font-bold">{strength.score}</span>
-                            </div>
+                        </div>
+                            
                             <div>
                               <h4 className="font-medium">{strength.name}</h4>
                               <p className="text-sm text-gray-500">{getScoreLabel(strength.score)}</p>
-                            </div>
+                        </div>
                           </li>
                         ))}
                       </ul>
@@ -851,26 +854,27 @@ export default function ResultsPage() {
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-3">
-                        {weaknesses.map((weakness, index) => (
+                        {weaknesses.map((weakness: { name: string; score: number }, index: number) => (
                           <li key={index} className="flex items-center">
                             <div className={`w-12 h-12 flex items-center justify-center rounded-full ${getScoreBadgeColor(weakness.score)} mr-3`}>
                               <span className="text-white font-bold">{weakness.score}</span>
-                            </div>
+                        </div>
+                            
                             <div>
                               <h4 className="font-medium">{weakness.name}</h4>
                               <p className="text-sm text-gray-500">{getScoreLabel(weakness.score)}</p>
-                            </div>
+                        </div>
                           </li>
                         ))}
                       </ul>
                     </CardContent>
                   </Card>
-                </div>
+                        </div>
               </TabsContent>
 
               <TabsContent value="details" className="space-y-6">
                 <div className="grid grid-cols-1 gap-6">
-                  {domainInsights.map((domainData, index) => (
+                  {domainInsights.map((domainData: DomainAnalysis, index: number) => (
                     <DomainDetail key={index} domainData={domainData} />
                   ))}
                 </div>
@@ -887,24 +891,24 @@ export default function ResultsPage() {
                 </Card>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {analysisData?.relationshipInsights?.map((relationship, index) => (
+                  {(analysisData as any)?.relationshipInsights?.map((relationship: { domains: string[]; insight: string }, index: number) => (
                     <Card key={index}>
-                      <CardHeader className="pb-2">
+                    <CardHeader className="pb-2">
                         <CardTitle className="text-lg">
                           {relationship.domains.join(" & ")} Relationship
                         </CardTitle>
-                      </CardHeader>
-                      <CardContent>
+                    </CardHeader>
+                    <CardContent>
                         <p className="text-gray-700">{relationship.insight}</p>
-                      </CardContent>
-                    </Card>
+                    </CardContent>
+                  </Card>
                   ))}
                 </div>
               </TabsContent>
 
               <TabsContent value="recommendations" className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {recommendations.map((rec, index) => (
+                  {recommendations.map((rec: { title: string; description: string }, index: number) => (
                     <RecommendationCard
                       key={index}
                       title={rec.title}
@@ -947,7 +951,7 @@ export default function ResultsPage() {
                   domainAnalyses={domainInsights}
                   strengths={strengths}
                   weaknesses={weaknesses}
-                  learningStyles={getLearningStyles()}
+                  learningStyle={getLearningStyle()}
                 />
               </TabsContent>
             </Tabs>

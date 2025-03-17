@@ -90,6 +90,7 @@ export function useCognitiveAnalysis(userData: any, options: UseCognitiveAnalysi
       return analysisData.domainAnalyses.reduce<DomainScores>(
         (acc, domain) => {
           const domainKey = domain.domain.toLowerCase().replace(/\s+/g, '') as keyof DomainScores;
+          // Round the score to an integer
           acc[domainKey] = Math.round(domain.score);
           return acc;
         }, 

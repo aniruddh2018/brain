@@ -57,53 +57,92 @@ export const saveUserData = async (userData: any) => {
 
 export const saveGameMetrics = async (userId: string, gameData: any) => {
   try {
+    // Validate required fields
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    
+    if (!gameData || !gameData.name) {
+      throw new Error('Game data with name is required');
+    }
+    
     // Log the data being sent to help debug
     console.log('Saving game metrics:', {
       user_id: userId,
       game_name: gameData.name,
-      metrics: gameData.metrics,
+      metrics_structure: typeof gameData.metrics,
       is_skipped: gameData.is_skipped || false
     });
     
+    // Ensure metrics is properly formatted as JSON
+    const metricsObject = gameData.metrics || {};
+    
+    // Create a sanitized version of the metrics to avoid circular references
+    const cleanMetrics = JSON.parse(JSON.stringify(metricsObject));
+    
+    // Create the insert object with properly formatted data
+    const insertData = {
+      user_id: userId,
+      game_name: gameData.name,
+      metrics: cleanMetrics,
+      completed_at: new Date().toISOString(),
+      is_skipped: gameData.is_skipped || false,
+    };
+    
+    console.log('Formatted insert data:', insertData);
+    
     const { data, error } = await supabase
       .from('game_metrics')
-      .insert({
-        user_id: userId,
-        game_name: gameData.name,
-        metrics: gameData.metrics,
-        completed_at: new Date().toISOString(),
-        is_skipped: gameData.is_skipped || false,
-      })
+      .insert(insertData)
       .select();
 
     if (error) {
-      // Enhanced error logging with more detailed information
       console.error('Supabase error details:', {
         code: error.code,
         message: error.message,
         details: error.details,
         hint: error.hint
       });
+      
+      // Try a direct fetch to verify connectivity
+      try {
+        const testResponse = await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL || '');
+        console.log('Supabase connectivity test:', {
+          status: testResponse.status,
+          ok: testResponse.ok
+        });
+      } catch (connErr) {
+        console.error('Connection test failed:', connErr);
+      }
+      
       throw error;
     }
+    
+    console.log('Successfully saved game metrics with response:', data);
     return data;
   } catch (error: any) {
-    // Capture and format error information for better diagnostics
-    const errorInfo = {
-      message: error?.message || 'Unknown error',
-      name: error?.name,
-      stack: error?.stack,
-      cause: error?.cause,
-      // Handle potential circular references in error objects
-      details: typeof error === 'object' ? JSON.parse(JSON.stringify(error, Object.getOwnPropertyNames(error))) : error
-    };
+    // Better error handling with detailed diagnostics
+    let errorMessage = 'Unknown error';
+    let errorDetails = {};
     
-    console.error('Error saving game metrics:', errorInfo);
+    try {
+      errorMessage = error?.message || 'Unknown error';
+      errorDetails = {
+        name: error?.name,
+        code: error?.code,
+        // Safe stringify of just the first line of stack trace
+        stackTrace: error?.stack?.toString().split('\n')[0] || 'No stack trace'
+      };
+    } catch (e) {
+      console.error('Error while formatting error details:', e);
+    }
     
-    // Also log raw error for development purposes
-    console.error('Raw error object:', error);
+    console.error('Error saving game metrics:', {
+      message: errorMessage,
+      details: errorDetails
+    });
     
-    throw error;
+    throw new Error(`Failed to save game metrics: ${errorMessage}`);
   }
 };
 
@@ -128,7 +167,7 @@ export const saveUserReport = async (userId: string, reportData: any) => {
         domain_analyses: reportData.domainAnalyses,
         recommendations: reportData.recommendations,
         relationship_insights: reportData.relationshipInsights,
-        learning_styles: reportData.learningStyles,
+        learning_styles: reportData.learningStyle,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })

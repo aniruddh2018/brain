@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, AlertTriangle } from "lucide-react";
-import { DomainAnalysis } from '@/lib/report-generator';
+import { DomainAnalysis } from '@/lib';
 
 interface DomainDetailProps {
   domainData: DomainAnalysis;
@@ -69,7 +69,7 @@ export default function DomainDetail({ domainData }: DomainDetailProps) {
                     <Check className="h-4 w-4 text-green-500 mr-1" /> Strengths
                   </h4>
                   <ul className="list-disc list-inside text-gray-600 ml-1 space-y-1">
-                    {strengths.map((strength, i) => (
+                    {strengths.map((strength: string, i: number) => (
                       <li key={i}>{strength}</li>
                     ))}
                   </ul>
@@ -82,7 +82,7 @@ export default function DomainDetail({ domainData }: DomainDetailProps) {
                     <AlertTriangle className="h-4 w-4 text-amber-500 mr-1" /> Areas for Growth
                   </h4>
                   <ul className="list-disc list-inside text-gray-600 ml-1 space-y-1">
-                    {weaknesses.map((weakness, i) => (
+                    {weaknesses.map((weakness: string, i: number) => (
                       <li key={i}>{weakness}</li>
                     ))}
                   </ul>
@@ -94,7 +94,7 @@ export default function DomainDetail({ domainData }: DomainDetailProps) {
               <div>
                 <h4 className="font-medium text-gray-700 mb-2">Recommendations</h4>
                 <ul className="list-disc list-inside text-gray-600 ml-1 space-y-1">
-                  {recommendations.map((rec, i) => (
+                  {recommendations.map((rec: string, i: number) => (
                     <li key={i}>{rec}</li>
                   ))}
                 </ul>

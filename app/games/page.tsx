@@ -19,8 +19,7 @@ import {
   Compass, 
   Activity 
 } from "lucide-react"
-import { saveGameMetrics } from "@/lib" // Import from lib/index.ts
-import { supabase } from "@/lib/supabase-fixed" // Add direct import for Supabase client
+import { supabase, saveGameMetrics, saveUserData } from "@/lib/supabase-fixed"
 import { 
   GameData,
   BaseGameMetrics,
@@ -46,68 +45,11 @@ interface UserData {
   };
 }
 
-// Add this function near the top of the component, before the useEffect hook
-const saveGameMetricsToSupabase = async (userId: string, gameData: any) => {
-  try {
-    // Log the data being sent to help debug
-    console.log('Directly saving game metrics to Supabase:', {
-      user_id: userId,
-      game_name: gameData.name,
-      is_skipped: gameData.is_skipped || false
-    });
-    
-    // Format metrics to avoid circular references
-    let cleanMetrics;
-    try {
-      cleanMetrics = JSON.parse(JSON.stringify(gameData.metrics || {}));
-    } catch (jsonError) {
-      console.error('Error stringifying metrics:', jsonError);
-      cleanMetrics = { error: 'Failed to stringify metrics' };
-    }
-    
-    // Try a direct insert using the Supabase client
-    const { data, error } = await supabase
-      .from('game_metrics')
-      .insert({
-        user_id: userId,
-        game_name: gameData.name,
-        metrics: cleanMetrics,
-        completed_at: new Date().toISOString(),
-        is_skipped: gameData.is_skipped || false
-      })
-      .select();
-    
-    if (error) {
-      // Log specific error details
-      console.error('Direct Supabase error:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
-      throw error;
-    }
-    
-    console.log('Game metrics saved successfully:', data);
-    return data;
-  } catch (error: any) {
-    // Capture detailed error information
-    console.error('Error directly saving game metrics:', {
-      message: error?.message || 'Unknown error',
-      name: error?.name,
-      stack: error?.stack?.toString().split('\n')[0] || 'No stack trace'
-    });
-    
-    // Also try to log the error object itself
-    try {
-      console.error('Raw error:', error);
-    } catch (e) {
-      console.error('Could not log raw error');
-    }
-    
-    throw error;
-  }
-};
+// Helper types for the metrics
+type GameMetricsType = Record<string, Record<string, any>>
+
+// Note: We're using the imported saveGameMetrics function from supabase-fixed
+// instead of a local implementation to ensure consistency.
 
 export default function GamesPage() {
   const router = useRouter()
@@ -157,6 +99,7 @@ export default function GamesPage() {
           is_skipped: false
         });
         
+        // Use the imported saveGameMetrics function from supabase-fixed
         const result = await saveGameMetrics(userId, {
           name: currentGameName,
           metrics: gameMetrics,
@@ -295,7 +238,7 @@ export default function GamesPage() {
           is_skipped: true
         });
         
-        await saveGameMetricsToSupabase(userId, {
+        await saveGameMetrics(userId, {
           name: currentGameName,
           metrics: gameMetrics,
           is_skipped: true
@@ -316,10 +259,10 @@ export default function GamesPage() {
         [currentGameName]: gameMetrics,
       },
     }
-    
+
     localStorage.setItem("userData", JSON.stringify(updatedUserData))
     setUserData(updatedUserData)
-    
+
     if (updatedUserData.gameIndex >= 6) {
       router.push("/results")
     }
@@ -431,7 +374,7 @@ export default function GamesPage() {
   return (
     <main className="min-h-screen bg-gray-50 py-6">
       <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto">
           {/* Loading state */}
           {loading ? (
             <div className="flex justify-center items-center min-h-[400px]">
@@ -442,8 +385,7 @@ export default function GamesPage() {
               {/* Game controls header */}
               <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
                 <div className="flex flex-col gap-1">
-                  <h1 className="text-2xl font-bold">Cognitive Assessment</h1>
-                  <p className="text-gray-500 text-sm">Complete a series of games to measure different cognitive abilities</p>
+                  <h1 className="text-2xl font-bold">IQLEVAL</h1>
                 </div>
 
                 <div className="flex flex-col items-end gap-2">
@@ -496,9 +438,7 @@ export default function GamesPage() {
               
               {/* Footer info */}
               <div className="text-center">
-                <p className="text-sm text-gray-500">
-                  Complete all games to receive your cognitive assessment report
-                </p>
+                {/* Footer content removed */}
               </div>
             </>
           ) : (

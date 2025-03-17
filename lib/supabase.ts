@@ -63,7 +63,7 @@ export async function saveUserReport(userId: string, reportData: any) {
       domain_analyses: reportData.domainAnalyses,
       recommendations: reportData.recommendations,
       relationship_insights: reportData.relationshipInsights,
-      learning_styles: reportData.learningStyles,
+      learning_styles: reportData.learningStyle,
       created_at: reportData.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
