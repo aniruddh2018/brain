@@ -99,8 +99,38 @@ export default function UserForm() {
       </nav>
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600/10 to-indigo-600/10 py-16 sm:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative bg-gradient-to-r from-blue-600/10 to-indigo-600/10 py-16 sm:py-24 overflow-hidden">
+        {/* Brain Network Animation Background */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 flex items-center justify-center">
+            {/* Nodes */}
+            <div className="absolute h-4 w-4 rounded-full bg-indigo-600 animate-pulse top-1/4 left-1/4"></div>
+            <div className="absolute h-5 w-5 rounded-full bg-blue-500 animate-pulse delay-300 top-1/3 right-1/3"></div>
+            <div className="absolute h-3 w-3 rounded-full bg-indigo-400 animate-pulse delay-100 bottom-1/4 right-1/4"></div>
+            <div className="absolute h-6 w-6 rounded-full bg-blue-600 animate-pulse delay-700 bottom-1/3 left-1/3"></div>
+            <div className="absolute h-4 w-4 rounded-full bg-indigo-500 animate-pulse delay-500 top-2/5 left-2/5"></div>
+            <div className="absolute h-3 w-3 rounded-full bg-blue-400 animate-pulse delay-200 bottom-2/5 right-2/5"></div>
+            <div className="absolute h-5 w-5 rounded-full bg-indigo-300 animate-pulse delay-400 top-1/5 right-1/5"></div>
+            <div className="absolute h-4 w-4 rounded-full bg-blue-300 animate-pulse delay-600 bottom-1/5 left-1/5"></div>
+            
+            {/* Connecting Lines */}
+            <div className="absolute h-px w-[30%] bg-indigo-300 rotate-45 top-1/3 left-1/3 animate-fadeIn delay-100"></div>
+            <div className="absolute h-px w-[25%] bg-blue-300 -rotate-45 top-1/2 left-1/3 animate-fadeIn delay-300"></div>
+            <div className="absolute h-px w-[20%] bg-indigo-300 rotate-90 top-2/5 right-1/3 animate-fadeIn delay-200"></div>
+            <div className="absolute h-px w-[30%] bg-blue-300 rotate-180 bottom-1/3 left-1/2 animate-fadeIn delay-150"></div>
+            <div className="absolute h-px w-[25%] bg-indigo-300 rotate-135 bottom-2/5 right-1/3 animate-fadeIn delay-400"></div>
+            <div className="absolute h-px w-[20%] bg-blue-300 rotate-[70deg] bottom-1/5 right-1/4 animate-fadeIn delay-350"></div>
+            <div className="absolute h-px w-[28%] bg-indigo-300 rotate-[110deg] top-1/4 right-1/4 animate-fadeIn delay-250"></div>
+            <div className="absolute h-px w-[22%] bg-blue-300 rotate-[150deg] top-1/5 left-1/4 animate-fadeIn delay-500"></div>
+
+            {/* Central Brain (smaller and more subtle than the main brain) */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-10">
+              <Brain className="h-64 w-64 text-indigo-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="lg:grid lg:grid-cols-12 lg:gap-8">
             <div className="sm:text-center md:max-w-2xl md:mx-auto lg:col-span-6 lg:text-left">
               <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
@@ -120,40 +150,42 @@ export default function UserForm() {
               </div>
             </div>
             <div className="mt-12 relative sm:max-w-lg sm:mx-auto lg:mt-0 lg:max-w-none lg:mx-0 lg:col-span-6 lg:flex lg:items-center">
-              <div className="relative mx-auto w-full rounded-lg shadow-lg lg:max-w-md">
-                <div className="relative block w-full bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg overflow-hidden">
-                  <div className="aspect-[4/3] flex items-center justify-center p-4">
-                    {/* Brain Animation */}
-                    <div className="relative w-full h-full">
-                      {/* Center Brain Icon with pulsing effect */}
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-                                       rounded-full bg-white/80 p-6 shadow-lg animate-pulse">
-                        <Brain className="h-16 w-16 text-indigo-600" />
-                      </div>
-                      
-                      {/* Concentric Circles */}
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                        <div className="absolute h-32 w-32 rounded-full border-2 border-indigo-300 opacity-60 animate-ping"></div>
-                        <div className="absolute h-44 w-44 rounded-full border-2 border-blue-300 opacity-40 animate-ping"></div>
-                        <div className="absolute h-56 w-56 rounded-full border-2 border-indigo-200 opacity-20 animate-ping"></div>
-                      </div>
-                      
-                      {/* Brain Network Nodes */}
-                      <div className="absolute top-1/4 left-1/4 h-4 w-4 rounded-full bg-blue-500 animate-pulse"></div>
-                      <div className="absolute top-1/4 right-1/4 h-5 w-5 rounded-full bg-indigo-500 animate-pulse"></div>
-                      <div className="absolute bottom-1/4 left-1/4 h-3 w-3 rounded-full bg-blue-600 animate-pulse"></div>
-                      <div className="absolute bottom-1/4 right-1/4 h-4 w-4 rounded-full bg-indigo-600 animate-pulse"></div>
-                      <div className="absolute top-1/2 left-1/5 h-3 w-3 rounded-full bg-blue-400 animate-pulse"></div>
-                      <div className="absolute bottom-1/3 right-1/5 h-4 w-4 rounded-full bg-indigo-400 animate-pulse"></div>
-                      
-                      {/* Connection Lines */}
-                      <div className="absolute top-1/4 left-1/4 h-px w-32 bg-blue-200 transform rotate-45 origin-left opacity-60"></div>
-                      <div className="absolute top-1/4 right-1/4 h-px w-32 bg-indigo-200 transform -rotate-45 origin-right opacity-60"></div>
-                      <div className="absolute bottom-1/4 left-1/4 h-px w-32 bg-blue-200 transform -rotate-45 origin-left opacity-60"></div>
-                      <div className="absolute bottom-1/4 right-1/4 h-px w-32 bg-indigo-200 transform rotate-45 origin-right opacity-60"></div>
-                    </div>
+              {/* Brain Animation - Now directly in the hero section without the white box */}
+              <div className="brain-animation relative w-full h-full">
+                {/* Nodes */}
+                <div className="node absolute h-4 w-4 rounded-full bg-indigo-600 animate-pulse top-1/4 left-1/4"></div>
+                <div className="node absolute h-5 w-5 rounded-full bg-blue-500 animate-pulse delay-300 top-1/3 right-1/3"></div>
+                <div className="node absolute h-3 w-3 rounded-full bg-indigo-400 animate-pulse delay-100 bottom-1/4 right-1/4"></div>
+                <div className="node absolute h-6 w-6 rounded-full bg-blue-600 animate-pulse delay-700 bottom-1/3 left-1/3"></div>
+                <div className="node absolute h-4 w-4 rounded-full bg-indigo-500 animate-pulse delay-500 top-2/5 left-2/5"></div>
+                <div className="node absolute h-3 w-3 rounded-full bg-blue-400 animate-pulse delay-200 bottom-2/5 right-2/5"></div>
+                
+                {/* Center Brain Icon */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="rounded-full bg-white/80 p-6 shadow-xl z-10 animate-float">
+                    <Brain className="h-16 w-16 text-indigo-600" />
                   </div>
                 </div>
+                
+                {/* Connecting Lines */}
+                <div className="absolute h-px w-1/4 bg-indigo-300 rotate-45 top-1/3 left-1/3 animate-fadeIn delay-100"></div>
+                <div className="absolute h-px w-1/3 bg-blue-300 -rotate-45 top-1/2 left-1/3 animate-fadeIn delay-300"></div>
+                <div className="absolute h-px w-1/4 bg-indigo-300 rotate-90 top-2/5 right-1/3 animate-fadeIn delay-200"></div>
+                <div className="absolute h-px w-1/3 bg-blue-300 rotate-180 bottom-1/3 left-1/2 animate-fadeIn delay-150"></div>
+                <div className="absolute h-px w-1/4 bg-indigo-300 rotate-135 bottom-2/5 right-1/3 animate-fadeIn delay-400"></div>
+                
+                {/* Pulsing Circles */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="pulse-circle animate-ping-slow opacity-40 absolute h-20 w-20 rounded-full border-2 border-indigo-400"></div>
+                  <div className="pulse-circle animate-ping-slow delay-300 opacity-30 absolute h-32 w-32 rounded-full border-2 border-blue-300"></div>
+                  <div className="pulse-circle animate-ping-slow delay-600 opacity-20 absolute h-44 w-44 rounded-full border-2 border-indigo-200"></div>
+                </div>
+                
+                {/* Floating Particles */}
+                <div className="particle absolute h-1 w-1 rounded-full bg-blue-300 animate-float-particle top-1/5 left-1/5"></div>
+                <div className="particle absolute h-1 w-1 rounded-full bg-indigo-300 animate-float-particle-reverse delay-300 bottom-1/5 right-1/5"></div>
+                <div className="particle absolute h-1 w-1 rounded-full bg-blue-200 animate-float-particle delay-600 top-3/5 right-2/5"></div>
+                <div className="particle absolute h-1 w-1 rounded-full bg-indigo-200 animate-float-particle-reverse delay-900 bottom-2/5 left-2/5"></div>
               </div>
             </div>
           </div>
