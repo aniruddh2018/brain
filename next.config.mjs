@@ -16,6 +16,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
     domains: ['txndzhjxsijyjeuoqfxl.supabase.co'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
   experimental: {
     webpackBuildWorker: true,
@@ -25,6 +31,7 @@ const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   reactStrictMode: true,
+  trailingSlash: true,
 }
 
 mergeConfig(nextConfig, userConfig)

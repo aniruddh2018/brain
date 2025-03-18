@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - IQLEVAL</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #d9e3fd;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 480px;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .logo-container {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            background-color: #e7efff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo {
+            width: 40px;
+            height: 40px;
+            color: #4f46e5;
+        }
+        h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+        .primary-button {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            margin-bottom: 0.75rem;
+            text-decoration: none;
+        }
+        .primary-button:hover {
+            background-color: #4338ca;
+        }
+        .secondary-button {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: white;
+            color: #111827;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .secondary-button:hover {
+            background-color: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-container">
+            <svg class="logo" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3c.284 0 .544.152.685.385l2.948 4.88c1.08 1.784 2.025 3.208 2.271 3.585.246.376.366.84.284 1.284-.082.445-.321.83-.66 1.07C17.189 14.45 15.147 15 12 15c-3.147 0-5.19-.55-5.528-.797-.339-.24-.578-.624-.66-1.07-.082-.445.038-.908.284-1.284.246-.377 1.191-1.8 2.271-3.585l2.948-4.88c.141-.233.401-.385.685-.385z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.5c-.5 0-1 .14-1.42.406-.421.265-.78.641-1.04 1.094"></path>
+            </svg>
+        </div>
+        
+        <h1>Page Not Found</h1>
+        
+        <p>
+            Sorry, we couldn't find the page you're looking for. It might have been moved, deleted, or never existed.
+        </p>
+        
+        <a href="/" class="primary-button">Return to Home</a>
+        <a href="javascript:history.back()" class="secondary-button">Go Back</a>
+    </div>
+
+    <script>
+        // Redirect to home page after 5 seconds if JavaScript is enabled
+        setTimeout(function() {
+            window.location.href = '/';
+        }, 5000);
+    </script>
+</body>
+</html> 

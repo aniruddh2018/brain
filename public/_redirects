@@ -1,0 +1,3 @@
+# Redirects for Netlify - Next.js SPA mode
+/api/*  /.netlify/functions/nextjs-api/:splat  200
+/*      /index.html                            200 
