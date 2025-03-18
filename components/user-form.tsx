@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,33 @@ export default function UserForm() {
     education: "elementary",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [scrollY, setScrollY] = useState(0)
+
+  // Ref to track scroll animation sections
+  const aboutSectionRef = useRef<HTMLDivElement>(null)
+  const featuresSectionRef = useRef<HTMLDivElement>(null)
+  const futurePlansSectionRef = useRef<HTMLDivElement>(null)
+  const formSectionRef = useRef<HTMLDivElement>(null)
+
+  // Handle scroll effects
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY)
+      
+      // Check for brain elements to animate on scroll
+      document.querySelectorAll('.brain-scroll-animate').forEach((el) => {
+        const rect = (el as HTMLElement).getBoundingClientRect()
+        if (rect.top <= window.innerHeight * 0.8) {
+          el.classList.add('visible')
+        }
+      })
+    }
+    
+    window.addEventListener('scroll', handleScroll)
+    handleScroll() // Check on initial load
+    
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -99,93 +126,101 @@ export default function UserForm() {
       </nav>
 
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-r from-blue-600/10 to-indigo-600/10 py-16 sm:py-24 overflow-hidden">
-        {/* Brain Network Animation Background */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 flex items-center justify-center">
-            {/* Nodes */}
-            <div className="absolute h-4 w-4 rounded-full bg-indigo-600 animate-pulse top-1/4 left-1/4"></div>
-            <div className="absolute h-5 w-5 rounded-full bg-blue-500 animate-pulse delay-300 top-1/3 right-1/3"></div>
-            <div className="absolute h-3 w-3 rounded-full bg-indigo-400 animate-pulse delay-100 bottom-1/4 right-1/4"></div>
-            <div className="absolute h-6 w-6 rounded-full bg-blue-600 animate-pulse delay-700 bottom-1/3 left-1/3"></div>
-            <div className="absolute h-4 w-4 rounded-full bg-indigo-500 animate-pulse delay-500 top-2/5 left-2/5"></div>
-            <div className="absolute h-3 w-3 rounded-full bg-blue-400 animate-pulse delay-200 bottom-2/5 right-2/5"></div>
-            <div className="absolute h-5 w-5 rounded-full bg-indigo-300 animate-pulse delay-400 top-1/5 right-1/5"></div>
-            <div className="absolute h-4 w-4 rounded-full bg-blue-300 animate-pulse delay-600 bottom-1/5 left-1/5"></div>
-            
-            {/* Connecting Lines */}
-            <div className="absolute h-px w-[30%] bg-indigo-300 rotate-45 top-1/3 left-1/3 animate-fadeIn delay-100"></div>
-            <div className="absolute h-px w-[25%] bg-blue-300 -rotate-45 top-1/2 left-1/3 animate-fadeIn delay-300"></div>
-            <div className="absolute h-px w-[20%] bg-indigo-300 rotate-90 top-2/5 right-1/3 animate-fadeIn delay-200"></div>
-            <div className="absolute h-px w-[30%] bg-blue-300 rotate-180 bottom-1/3 left-1/2 animate-fadeIn delay-150"></div>
-            <div className="absolute h-px w-[25%] bg-indigo-300 rotate-135 bottom-2/5 right-1/3 animate-fadeIn delay-400"></div>
-            <div className="absolute h-px w-[20%] bg-blue-300 rotate-[70deg] bottom-1/5 right-1/4 animate-fadeIn delay-350"></div>
-            <div className="absolute h-px w-[28%] bg-indigo-300 rotate-[110deg] top-1/4 right-1/4 animate-fadeIn delay-250"></div>
-            <div className="absolute h-px w-[22%] bg-blue-300 rotate-[150deg] top-1/5 left-1/4 animate-fadeIn delay-500"></div>
-
-            {/* Central Brain (smaller and more subtle than the main brain) */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-10">
-              <Brain className="h-64 w-64 text-indigo-600" />
-            </div>
+      <div className="relative bg-gradient-to-r from-blue-600/10 to-indigo-600/10 py-20 sm:py-32 overflow-hidden">
+        {/* Brain animation background */}
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+          {/* Glowing background orbs */}
+          <div className="absolute top-1/4 left-1/3 w-64 h-64 rounded-full bg-blue-400/10 blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl animate-pulse delay-700"></div>
+          <div className="absolute top-2/3 left-1/4 w-72 h-72 rounded-full bg-purple-400/10 blur-3xl animate-pulse delay-300"></div>
+          
+          {/* Small brain particles with glow effects */}
+          <div className="absolute h-5 w-5 top-1/4 left-1/4 opacity-70 filter drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]">
+            <Brain className="h-full w-full text-indigo-500 animate-float-particle" />
+          </div>
+          <div className="absolute h-8 w-8 top-1/3 right-1/3 opacity-60 filter drop-shadow-[0_0_10px_rgba(59,130,246,0.6)]">
+            <Brain className="h-full w-full text-blue-500 animate-float-particle-reverse delay-200" />
+          </div>
+          <div className="absolute h-6 w-6 bottom-1/4 left-1/2 opacity-70 filter drop-shadow-[0_0_8px_rgba(79,70,229,0.5)]">
+            <Brain className="h-full w-full text-indigo-600 animate-float-particle delay-300" />
+          </div>
+          <div className="absolute h-9 w-9 bottom-1/3 right-1/4 opacity-60 filter drop-shadow-[0_0_12px_rgba(37,99,235,0.7)]">
+            <Brain className="h-full w-full text-blue-600 animate-float-particle-reverse delay-100" />
+          </div>
+          <div className="absolute h-5 w-5 top-1/2 left-1/3 opacity-70 filter drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]">
+            <Brain className="h-full w-full text-indigo-400 animate-float-particle delay-500" />
+          </div>
+          <div className="absolute h-7 w-7 top-2/3 right-1/4 opacity-65 filter drop-shadow-[0_0_10px_rgba(96,165,250,0.6)]">
+            <Brain className="h-full w-full text-blue-400 animate-float-particle-reverse delay-400" />
+          </div>
+          <div className="absolute h-6 w-6 top-1/5 right-1/5 opacity-70 filter drop-shadow-[0_0_12px_rgba(167,139,250,0.7)]">
+            <Brain className="h-full w-full text-purple-400 animate-float-particle delay-700" />
+          </div>
+          <div className="absolute h-8 w-8 bottom-1/5 left-1/5 opacity-65 filter drop-shadow-[0_0_10px_rgba(99,102,241,0.6)]">
+            <Brain className="h-full w-full text-indigo-500 animate-float-particle-reverse delay-600" />
+          </div>
+          <div className="absolute h-10 w-10 top-2/5 right-2/5 opacity-40 filter drop-shadow-[0_0_15px_rgba(79,70,229,0.8)]">
+            <Brain className="h-full w-full text-indigo-600 animate-float-particle delay-200" />
+          </div>
+          <div className="absolute h-4 w-4 bottom-2/5 left-2/5 opacity-75 filter drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]">
+            <Brain className="h-full w-full text-indigo-300 animate-float-particle-reverse delay-800" />
+          </div>
+          
+          {/* Neuron connections - animated lines with pulse and glow */}
+          <div className="absolute h-0.5 w-40 bg-gradient-to-r from-indigo-300/0 via-indigo-400/50 to-indigo-300/0 -rotate-45 top-1/3 left-1/3 animate-pulse filter blur-[1px]"></div>
+          <div className="absolute h-0.5 w-60 bg-gradient-to-r from-blue-300/0 via-blue-400/50 to-blue-300/0 rotate-45 bottom-1/3 right-1/3 animate-pulse delay-300 filter blur-[1px]"></div>
+          <div className="absolute h-0.5 w-48 bg-gradient-to-r from-indigo-300/0 via-indigo-400/50 to-indigo-300/0 rotate-30 top-1/2 right-1/4 animate-pulse delay-500 filter blur-[1px]"></div>
+          <div className="absolute h-0.5 w-52 bg-gradient-to-r from-blue-300/0 via-blue-400/50 to-blue-300/0 -rotate-30 bottom-1/2 left-1/4 animate-pulse delay-700 filter blur-[1px]"></div>
+          <div className="absolute h-0.5 w-44 bg-gradient-to-r from-purple-300/0 via-purple-400/50 to-purple-300/0 rotate-15 top-1/4 right-1/3 animate-pulse delay-400 filter blur-[1px]"></div>
+          <div className="absolute h-0.5 w-56 bg-gradient-to-r from-indigo-300/0 via-indigo-400/50 to-indigo-300/0 -rotate-15 bottom-1/4 left-1/3 animate-pulse delay-200 filter blur-[1px]"></div>
+          
+          {/* Light beams */}
+          <div className="absolute top-0 left-1/4 w-1 h-48 bg-gradient-to-b from-indigo-500/0 via-indigo-500/30 to-indigo-500/0 animate-pulse delay-300"></div>
+          <div className="absolute top-0 right-1/3 w-1 h-64 bg-gradient-to-b from-blue-500/0 via-blue-500/20 to-blue-500/0 animate-pulse delay-700"></div>
+          <div className="absolute top-1/4 left-0 h-1 w-48 bg-gradient-to-r from-indigo-500/0 via-indigo-500/30 to-indigo-500/0 animate-pulse delay-500"></div>
+          <div className="absolute bottom-1/3 right-0 h-1 w-64 bg-gradient-to-r from-blue-500/0 via-blue-500/20 to-blue-500/0 animate-pulse delay-200"></div>
+          
+          {/* Large subtle brain in center with enhanced effects */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-10 pointer-events-none filter drop-shadow-[0_0_30px_rgba(79,70,229,0.8)]">
+            <Brain className="h-[32rem] w-[32rem] text-indigo-700 animate-brain-rotate" style={{ transform: `translateY(${scrollY * 0.05}px) translateX(${scrollY * -0.02}px)` }} />
+          </div>
+          
+          {/* Particles effect */}
+          <div className="absolute inset-0">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div 
+                key={i}
+                className={`absolute rounded-full bg-white/30 filter blur-sm animate-float-particle`}
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  width: `${Math.random() * 4 + 1}px`,
+                  height: `${Math.random() * 4 + 1}px`,
+                  animationDelay: `${Math.random() * 10}s`,
+                  animationDuration: `${Math.random() * 10 + 10}s`
+                }}
+              />
+            ))}
           </div>
         </div>
-
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="lg:grid lg:grid-cols-12 lg:gap-8">
-            <div className="sm:text-center md:max-w-2xl md:mx-auto lg:col-span-6 lg:text-left">
-              <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
-                <span className="block">Evaluate your</span>
+            <div className="col-span-12 sm:text-center md:max-w-3xl md:mx-auto lg:col-span-10 lg:col-start-2 lg:text-center">
+              <h1 className="text-5xl tracking-tight font-extrabold text-gray-900 sm:text-6xl md:text-7xl mb-6">
+                <span className="block mb-2">Evaluate your</span>
                 <span className="block text-indigo-600">Cognitive Abilities</span>
               </h1>
-              <p className="mt-3 text-base text-gray-600 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl">
+              <p className="mt-6 text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
                 IQLEVAL provides a comprehensive assessment of your cognitive function through interactive challenges designed by experts in cognitive science.
               </p>
-              <div className="mt-8 sm:max-w-lg sm:mx-auto sm:text-center lg:text-left lg:mx-0">
+              <div className="mt-10 flex justify-center">
                 <Button 
                   onClick={scrollToForm} 
-                  className="bg-indigo-600 hover:bg-indigo-700 py-4 px-6 text-lg"
+                  className="bg-indigo-600 hover:bg-indigo-700 py-6 px-8 text-lg font-medium rounded-xl shadow-md hover:shadow-lg transition-all"
                 >
                   Start Your Assessment <ChevronRight className="ml-2 h-5 w-5" />
                 </Button>
-              </div>
-            </div>
-            <div className="mt-12 relative sm:max-w-lg sm:mx-auto lg:mt-0 lg:max-w-none lg:mx-0 lg:col-span-6 lg:flex lg:items-center">
-              {/* Brain Animation - Now directly in the hero section without the white box */}
-              <div className="brain-animation relative w-full h-full">
-                {/* Nodes */}
-                <div className="node absolute h-4 w-4 rounded-full bg-indigo-600 animate-pulse top-1/4 left-1/4"></div>
-                <div className="node absolute h-5 w-5 rounded-full bg-blue-500 animate-pulse delay-300 top-1/3 right-1/3"></div>
-                <div className="node absolute h-3 w-3 rounded-full bg-indigo-400 animate-pulse delay-100 bottom-1/4 right-1/4"></div>
-                <div className="node absolute h-6 w-6 rounded-full bg-blue-600 animate-pulse delay-700 bottom-1/3 left-1/3"></div>
-                <div className="node absolute h-4 w-4 rounded-full bg-indigo-500 animate-pulse delay-500 top-2/5 left-2/5"></div>
-                <div className="node absolute h-3 w-3 rounded-full bg-blue-400 animate-pulse delay-200 bottom-2/5 right-2/5"></div>
-                
-                {/* Center Brain Icon */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="rounded-full bg-white/80 p-6 shadow-xl z-10 animate-float">
-                    <Brain className="h-16 w-16 text-indigo-600" />
-                  </div>
-                </div>
-                
-                {/* Connecting Lines */}
-                <div className="absolute h-px w-1/4 bg-indigo-300 rotate-45 top-1/3 left-1/3 animate-fadeIn delay-100"></div>
-                <div className="absolute h-px w-1/3 bg-blue-300 -rotate-45 top-1/2 left-1/3 animate-fadeIn delay-300"></div>
-                <div className="absolute h-px w-1/4 bg-indigo-300 rotate-90 top-2/5 right-1/3 animate-fadeIn delay-200"></div>
-                <div className="absolute h-px w-1/3 bg-blue-300 rotate-180 bottom-1/3 left-1/2 animate-fadeIn delay-150"></div>
-                <div className="absolute h-px w-1/4 bg-indigo-300 rotate-135 bottom-2/5 right-1/3 animate-fadeIn delay-400"></div>
-                
-                {/* Pulsing Circles */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="pulse-circle animate-ping-slow opacity-40 absolute h-20 w-20 rounded-full border-2 border-indigo-400"></div>
-                  <div className="pulse-circle animate-ping-slow delay-300 opacity-30 absolute h-32 w-32 rounded-full border-2 border-blue-300"></div>
-                  <div className="pulse-circle animate-ping-slow delay-600 opacity-20 absolute h-44 w-44 rounded-full border-2 border-indigo-200"></div>
-                </div>
-                
-                {/* Floating Particles */}
-                <div className="particle absolute h-1 w-1 rounded-full bg-blue-300 animate-float-particle top-1/5 left-1/5"></div>
-                <div className="particle absolute h-1 w-1 rounded-full bg-indigo-300 animate-float-particle-reverse delay-300 bottom-1/5 right-1/5"></div>
-                <div className="particle absolute h-1 w-1 rounded-full bg-blue-200 animate-float-particle delay-600 top-3/5 right-2/5"></div>
-                <div className="particle absolute h-1 w-1 rounded-full bg-indigo-200 animate-float-particle-reverse delay-900 bottom-2/5 left-2/5"></div>
               </div>
             </div>
           </div>
@@ -193,7 +228,32 @@ export default function UserForm() {
       </div>
 
       {/* About Section */}
-      <div className="py-16 bg-white">
+      <div ref={aboutSectionRef} className="py-16 bg-white relative">
+        {/* Left-side brain animation */}
+        <div className="brain-scroll-animate opacity-0 transform -translate-x-16 transition-all duration-1000 absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10">
+          <div className="brain-inner relative h-24 w-24 md:h-32 md:w-32 group animate-pop-in">
+            {/* Ripple effects */}
+            <div className="absolute inset-0 scale-[0.7] rounded-full bg-indigo-400/10 animate-ping-slow"></div>
+            <div className="absolute inset-0 scale-[0.85] rounded-full bg-indigo-400/20 animate-ping-slow delay-700"></div>
+            <div className="absolute inset-0 rounded-full bg-indigo-400/30 animate-ping-slow delay-300"></div>
+            
+            {/* Glowing brain */}
+            <div className="absolute inset-0 flex items-center justify-center animate-glow-pulse">
+            <Brain className="h-full w-full text-indigo-500 animate-brain-rotate" />
+            </div>
+            
+            {/* Orbiting particles */}
+            <div className="absolute top-1/2 left-1/2 h-3 w-3 opacity-0 group-hover:opacity-80 transition-opacity duration-500 animate-orbit" 
+              style={{ transformOrigin: '0 0' }}>
+              <div className="h-full w-full rounded-full bg-blue-400 filter blur-sm"></div>
+            </div>
+            <div className="absolute top-1/2 left-1/2 h-2 w-2 opacity-0 group-hover:opacity-70 transition-opacity duration-500 animate-orbit-reverse" 
+              style={{ transformOrigin: '0 0', animationDelay: '0.5s' }}>
+              <div className="h-full w-full rounded-full bg-indigo-300 filter blur-sm"></div>
+            </div>
+          </div>
+        </div>
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:text-center">
             <h2 className="text-base text-indigo-600 font-semibold tracking-wide uppercase">About IQLEVAL</h2>
@@ -260,7 +320,32 @@ export default function UserForm() {
       </div>
 
       {/* Features Section */}
-      <div className="py-16 bg-gray-50">
+      <div ref={featuresSectionRef} className="py-16 bg-gray-50 relative">
+        {/* Right-side brain animation */}
+        <div className="brain-scroll-animate opacity-0 transform translate-x-16 transition-all duration-1000 absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-10">
+          <div className="brain-inner relative h-24 w-24 md:h-32 md:w-32 group animate-pop-in">
+            {/* Ripple effects */}
+            <div className="absolute inset-0 scale-[0.7] rounded-full bg-blue-400/10 animate-ping-slow"></div>
+            <div className="absolute inset-0 scale-[0.85] rounded-full bg-blue-400/20 animate-ping-slow delay-400"></div>
+            <div className="absolute inset-0 rounded-full bg-blue-400/30 animate-ping-slow delay-200"></div>
+            
+            {/* Glowing brain */}
+            <div className="absolute inset-0 flex items-center justify-center animate-glow-pulse delay-300">
+              <Brain className="h-full w-full text-blue-500 animate-brain-rotate delay-300" />
+            </div>
+            
+            {/* Orbiting particles */}
+            <div className="absolute top-1/2 left-1/2 h-3 w-3 opacity-0 group-hover:opacity-80 transition-opacity duration-500 animate-orbit-reverse" 
+              style={{ transformOrigin: '0 0' }}>
+              <div className="h-full w-full rounded-full bg-indigo-400 filter blur-sm"></div>
+            </div>
+            <div className="absolute top-1/2 left-1/2 h-2 w-2 opacity-0 group-hover:opacity-70 transition-opacity duration-500 animate-orbit" 
+              style={{ transformOrigin: '0 0', animationDelay: '0.7s' }}>
+              <div className="h-full w-full rounded-full bg-blue-300 filter blur-sm"></div>
+            </div>
+          </div>
+        </div>
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:text-center">
             <h2 className="text-base text-indigo-600 font-semibold tracking-wide uppercase">Features</h2>
@@ -327,7 +412,32 @@ export default function UserForm() {
       </div>
 
       {/* Future Plans Section */}
-      <div className="py-16 bg-white">
+      <div ref={futurePlansSectionRef} className="py-16 bg-white relative">
+        {/* Left-side brain animation */}
+        <div className="brain-scroll-animate opacity-0 transform -translate-x-16 transition-all duration-1000 absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10">
+          <div className="brain-inner relative h-24 w-24 md:h-32 md:w-32 group animate-pop-in">
+            {/* Ripple effects */}
+            <div className="absolute inset-0 scale-[0.7] rounded-full bg-purple-400/10 animate-ping-slow"></div>
+            <div className="absolute inset-0 scale-[0.85] rounded-full bg-purple-400/20 animate-ping-slow delay-300"></div>
+            <div className="absolute inset-0 rounded-full bg-purple-400/30 animate-ping-slow delay-600"></div>
+            
+            {/* Glowing brain */}
+            <div className="absolute inset-0 flex items-center justify-center animate-glow-pulse delay-500">
+              <Brain className="h-full w-full text-purple-500 animate-brain-rotate delay-200" />
+            </div>
+            
+            {/* Orbiting particles */}
+            <div className="absolute top-1/2 left-1/2 h-3 w-3 opacity-0 group-hover:opacity-80 transition-opacity duration-500 animate-orbit" 
+              style={{ transformOrigin: '0 0', animationDuration: '3.5s' }}>
+              <div className="h-full w-full rounded-full bg-purple-400 filter blur-sm"></div>
+            </div>
+            <div className="absolute top-1/2 left-1/2 h-2 w-2 opacity-0 group-hover:opacity-70 transition-opacity duration-500 animate-orbit-reverse" 
+              style={{ transformOrigin: '0 0', animationDelay: '0.3s', animationDuration: '4.5s' }}>
+              <div className="h-full w-full rounded-full bg-indigo-300 filter blur-sm"></div>
+            </div>
+          </div>
+        </div>
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:text-center">
             <h2 className="text-base text-indigo-600 font-semibold tracking-wide uppercase">Future Plans</h2>
@@ -378,7 +488,32 @@ export default function UserForm() {
       </div>
 
       {/* Form Section */}
-      <div id="profile-form" className="py-16 bg-[#d9e3fd]">
+      <div ref={formSectionRef} id="profile-form" className="py-16 bg-[#d9e3fd] relative">
+        {/* Right-side brain animation */}
+        <div className="brain-scroll-animate opacity-0 transform translate-x-16 transition-all duration-1000 absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-10">
+          <div className="brain-inner relative h-24 w-24 md:h-32 md:w-32 group animate-pop-in">
+            {/* Ripple effects */}
+            <div className="absolute inset-0 scale-[0.7] rounded-full bg-indigo-400/10 animate-ping-slow"></div>
+            <div className="absolute inset-0 scale-[0.85] rounded-full bg-indigo-400/20 animate-ping-slow delay-500"></div>
+            <div className="absolute inset-0 rounded-full bg-indigo-400/30 animate-ping-slow delay-800"></div>
+            
+            {/* Glowing brain */}
+            <div className="absolute inset-0 flex items-center justify-center animate-glow-pulse delay-400">
+              <Brain className="h-full w-full text-indigo-500 animate-brain-rotate delay-400" />
+            </div>
+            
+            {/* Orbiting particles */}
+            <div className="absolute top-1/2 left-1/2 h-3 w-3 opacity-0 group-hover:opacity-80 transition-opacity duration-500 animate-orbit-reverse" 
+              style={{ transformOrigin: '0 0', animationDuration: '4s' }}>
+              <div className="h-full w-full rounded-full bg-blue-400 filter blur-sm"></div>
+            </div>
+            <div className="absolute top-1/2 left-1/2 h-2 w-2 opacity-0 group-hover:opacity-70 transition-opacity duration-500 animate-orbit" 
+              style={{ transformOrigin: '0 0', animationDelay: '0.6s', animationDuration: '5s' }}>
+              <div className="h-full w-full rounded-full bg-purple-300 filter blur-sm"></div>
+            </div>
+          </div>
+        </div>
+        
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-xl shadow-lg p-8">
             <h2 className="text-2xl font-bold mb-2 text-center">Create Your Profile</h2>

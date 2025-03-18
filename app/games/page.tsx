@@ -116,6 +116,9 @@ export default function GamesPage() {
       console.error("No user ID found in localStorage");
     }
 
+    // Check if this is the last game (index 5 = StroopChallenge)
+    const isLastGame = userData.gameIndex === 5;
+
     // Update game index and store metrics
     const updatedUserData = {
       ...userData,
@@ -135,9 +138,9 @@ export default function GamesPage() {
     setUserData(updatedUserData)
     setDebugInfo(`${currentGameName} completed, moving to game ${updatedUserData.gameIndex}`)
 
-    // If all games are completed, go to results page
-    if (updatedUserData.gameIndex >= 6) {
-      console.log("All games completed, navigating to results")
+    // If all games are completed, go directly to results page
+    if (isLastGame) {
+      console.log("Last game completed, navigating directly to results")
       router.push("/results")
     }
   }
@@ -263,7 +266,11 @@ export default function GamesPage() {
     localStorage.setItem("userData", JSON.stringify(updatedUserData))
     setUserData(updatedUserData)
 
-    if (updatedUserData.gameIndex >= 6) {
+    // Check if this was the last game (index 5 = StroopChallenge)
+    const isLastGame = userData.gameIndex === 5;
+    
+    if (isLastGame) {
+      console.log("Last game skipped, navigating directly to results")
       router.push("/results")
     }
   }
@@ -367,7 +374,7 @@ export default function GamesPage() {
       case 5:
         return <StroopChallenge difficulty={userData.difficulty} onComplete={handleGameComplete} />
       default:
-        return <div>All games completed</div>
+        return null // No need to return anything here as completion UI is handled separately
     }
   }
 
@@ -403,9 +410,12 @@ export default function GamesPage() {
                     <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs ml-1">{userData.difficulty}</span>
                   </div>
                   
-                  <Button variant="outline" size="sm" className="h-8 text-xs px-2 py-1" onClick={forceNextGame}>
-                    Skip game
-                  </Button>
+                  {/* Only show Skip game button if there are games remaining */}
+                  {userData.gameIndex < 6 && (
+                    <Button variant="outline" size="sm" className="h-8 text-xs px-2 py-1" onClick={forceNextGame}>
+                      Skip game
+                    </Button>
+                  )}
                 </div>
               </div>
               
@@ -418,22 +428,41 @@ export default function GamesPage() {
               
               {/* Current game */}
               <div className="mb-8">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-1.5 rounded-full text-white shadow-md flex items-center gap-2 animate-badge-pulse hover:scale-105 transition-transform">
-                  {(() => {
-                    const gameInfo = getFormattedGameName(userData.gameIndex);
-                    const GameIcon = gameInfo.icon
-                    return (
-                      <>
-                        <GameIcon className="h-4 w-4 animate-subtle-bounce" />
-                        <span className="text-sm font-medium">{gameInfo.name}</span>
-                      </>
-                    )
-                  })()}
-                </div>
-                
-                <GameContainer>
-                  {getCurrentGame()}
-                </GameContainer>
+                {userData.gameIndex < 6 ? (
+                  <>
+                    <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-1.5 rounded-full text-white shadow-md flex items-center gap-2 animate-badge-pulse hover:scale-105 transition-transform">
+                      {(() => {
+                        const gameInfo = getFormattedGameName(userData.gameIndex);
+                        const GameIcon = gameInfo.icon
+                        return (
+                          <>
+                            <GameIcon className="h-4 w-4 animate-subtle-bounce" />
+                            <span className="text-sm font-medium">{gameInfo.name}</span>
+                          </>
+                        )
+                      })()}
+                    </div>
+                    
+                    <GameContainer>
+                      {getCurrentGame()}
+                    </GameContainer>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 max-w-xl mx-auto">
+                    <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">All Cognitive Assessments Completed</h2>
+                    <p className="text-gray-600 mb-10 text-center text-lg leading-relaxed">
+                      Congratulations! You've completed all the cognitive assessments. 
+                      Your personalized cognitive report is now ready.
+                    </p>
+                    <Button 
+                      size="lg" 
+                      className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-10 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all text-lg font-medium"
+                      onClick={() => router.push("/results")}
+                    >
+                      See Personalized Cognitive Report
+                    </Button>
+                  </div>
+                )}
               </div>
               
               {/* Footer info */}

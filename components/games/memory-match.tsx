@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Hourglass } from "lucide-react"
+import { Hourglass, Timer, Brain } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
 
 interface MemoryMatchProps {
   difficulty: string
@@ -28,28 +29,49 @@ export default function MemoryMatch({ difficulty, onComplete }: MemoryMatchProps
   const [errors, setErrors] = useState(0)
   const [reactionTimes, setReactionTimes] = useState<number[]>([])
   const [lastFlipTime, setLastFlipTime] = useState(0)
+  const [inRecallPhase, setInRecallPhase] = useState(false)
+  const [recallTimeRemaining, setRecallTimeRemaining] = useState(0)
+  const [recallDuration] = useState(10)
 
-  // Set up game based on difficulty
   useEffect(() => {
-    startGame()
+    if (difficulty) {
+      startGame();
+    }
   }, [difficulty])
 
-  // Timer for game
   useEffect(() => {
     let interval: NodeJS.Timeout
 
-    if (isPlaying) {
+    if (isPlaying && !inRecallPhase) {
       interval = setInterval(() => {
         setGameTime(Date.now() - startTime)
       }, 100)
     }
 
     return () => clearInterval(interval)
-  }, [isPlaying, startTime])
+  }, [isPlaying, startTime, inRecallPhase])
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+
+    if (inRecallPhase) {
+      interval = setInterval(() => {
+        setRecallTimeRemaining(prev => {
+          if (prev <= 1) {
+            endRecallPhase();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => clearInterval(interval);
+  }, [inRecallPhase]);
 
   const startGame = () => {
     const emojis = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮"]
-    let pairCount = 6 // Default medium
+    let pairCount = 6
 
     if (difficulty === "easy") pairCount = 4
     else if (difficulty === "hard") pairCount = 8
@@ -62,7 +84,6 @@ export default function MemoryMatch({ difficulty, onComplete }: MemoryMatchProps
       gameCards.push({ id: index * 2 + 1, emoji, flipped: false, matched: false })
     })
 
-    // Shuffle cards
     gameCards = gameCards.sort(() => Math.random() - 0.5)
 
     setCards(gameCards)
@@ -71,33 +92,53 @@ export default function MemoryMatch({ difficulty, onComplete }: MemoryMatchProps
     setMatches(0)
     setErrors(0)
     setReactionTimes([])
-    setStartTime(Date.now())
-    setIsPlaying(true)
+    
+    startRecallPhase(gameCards);
+  }
+
+  const startRecallPhase = (gameCards: CardType[]) => {
+    const cardsForRecall = gameCards.map(card => ({
+      ...card,
+      flipped: true
+    }));
+    
+    setCards(cardsForRecall);
+    setInRecallPhase(true);
+    setRecallTimeRemaining(10);
+    setIsPlaying(false);
+  }
+
+  const endRecallPhase = () => {
+    const gameCards = cards.map(card => ({
+      ...card,
+      flipped: false
+    }));
+    
+    setCards(gameCards);
+    setInRecallPhase(false);
+    setStartTime(Date.now());
+    setIsPlaying(true);
   }
 
   const handleCardClick = (card: CardType) => {
     if (!isPlaying || card.flipped || card.matched || flippedCards.length >= 2) return
 
-    // Calculate reaction time
     const now = Date.now()
     if (lastFlipTime > 0) {
       setReactionTimes((prev) => [...prev, now - lastFlipTime])
     }
     setLastFlipTime(now)
 
-    // Flip card
     const newCards = cards.map((c) => (c.id === card.id ? { ...c, flipped: true } : c))
     setCards(newCards)
 
     const newFlippedCards = [...flippedCards, card]
     setFlippedCards(newFlippedCards)
 
-    // Check for match if two cards are flipped
     if (newFlippedCards.length === 2) {
       setMoves(moves + 1)
 
       if (newFlippedCards[0].emoji === newFlippedCards[1].emoji) {
-        // Match found
         setTimeout(() => {
           setCards(
             cards.map((c) =>
@@ -109,13 +150,11 @@ export default function MemoryMatch({ difficulty, onComplete }: MemoryMatchProps
           setMatches(matches + 1)
           setFlippedCards([])
 
-          // Check if game is complete
           if (matches + 1 === cards.length / 2) {
             gameComplete()
           }
         }, 500)
       } else {
-        // No match
         setTimeout(() => {
           setCards(
             newCards.map((c) =>
@@ -132,13 +171,11 @@ export default function MemoryMatch({ difficulty, onComplete }: MemoryMatchProps
   const gameComplete = () => {
     setIsPlaying(false)
 
-    // Calculate metrics
-    const totalTime = (Date.now() - startTime) / 1000 // in seconds
+    const totalTime = (Date.now() - startTime) / 1000
     const avgReactionTime =
       reactionTimes.length > 0 ? reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length / 1000 : 0
     const accuracy = moves > 0 ? (matches / moves) * 100 : 0
 
-    // Send metrics to parent
     onComplete({
       totalTime,
       moves,
@@ -151,12 +188,11 @@ export default function MemoryMatch({ difficulty, onComplete }: MemoryMatchProps
   }
 
   const calculateMemoryScore = (time: number, moves: number, pairs: number) => {
-    // Lower time and fewer moves = better score
     const baseScore = 100
     const timeWeight = 0.5
     const movesWeight = 0.5
 
-    const perfectMoves = pairs // Minimum possible moves
+    const perfectMoves = pairs
     const timeScore = Math.max(0, baseScore - time * timeWeight)
     const movesScore = Math.max(0, baseScore - (moves - perfectMoves) * movesWeight * 10)
 
@@ -166,7 +202,35 @@ export default function MemoryMatch({ difficulty, onComplete }: MemoryMatchProps
   return (
     <div className="flex flex-col items-center">
       <h2 className="text-2xl font-bold mb-4">Memory Match</h2>
-      <p className="mb-6 text-center">Flip cards to find matching pairs. Remember the positions to match all cards.</p>
+      
+      {inRecallPhase ? (
+        <div className="w-full mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center text-indigo-600 font-medium">
+              <Brain className="w-4 h-4 mr-1" />
+              <span>Memorization Phase</span>
+            </div>
+            <div className="text-sm font-medium">
+              {recallTimeRemaining} seconds remaining
+            </div>
+          </div>
+          {typeof Progress !== 'undefined' ? (
+            <Progress value={(recallTimeRemaining / recallDuration) * 100} className="h-2" />
+          ) : (
+            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-indigo-600 transition-all duration-1000" 
+                style={{ width: `${(recallTimeRemaining / recallDuration) * 100}%` }}
+              ></div>
+            </div>
+          )}
+          <p className="mt-3 text-center text-sm">
+            Memorize the position of all cards. They will be hidden when the timer ends.
+          </p>
+        </div>
+      ) : (
+        <p className="mb-6 text-center">Flip cards to find matching pairs. Remember the positions to match all cards.</p>
+      )}
 
       <div className="flex justify-between items-center w-full mb-3">
         <div className="flex gap-3">
@@ -190,10 +254,10 @@ export default function MemoryMatch({ difficulty, onComplete }: MemoryMatchProps
         {cards.map((card) => (
           <div
             key={card.id}
-            className={`aspect-square w-full max-w-[80px] perspective-500 cursor-pointer transform transition-transform ${
+            className={`aspect-square w-full max-w-[80px] perspective-500 ${!inRecallPhase ? 'cursor-pointer' : ''} transform transition-transform ${
               card.matched ? "opacity-70" : ""
             }`}
-            onClick={() => handleCardClick(card)}
+            onClick={() => !inRecallPhase && handleCardClick(card)}
           >
             <div
               className={`w-full h-full relative transition-all duration-300 transform-style-3d ${
@@ -211,7 +275,7 @@ export default function MemoryMatch({ difficulty, onComplete }: MemoryMatchProps
         ))}
       </div>
 
-      {!isPlaying && (
+      {!isPlaying && !inRecallPhase && (
         <Button 
           onClick={startGame} 
           size="lg"
