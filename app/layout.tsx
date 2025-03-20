@@ -1,9 +1,10 @@
+import React from 'react';
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'IQLEVAL - Cognitive Assessment',
-  description: 'A comprehensive cognitive assessment platform that evaluates memory, problem-solving, and cognitive flexibility',
+  title: 'IQLEVAL',
+  description: 'Comprehensive cognitive assessment',
   keywords: ['cognitive assessment', 'brain games', 'memory', 'problem-solving', 'cognitive flexibility'],
   authors: [{ name: 'IQLEVAL Team' }],
   creator: 'IQLEVAL',
@@ -27,7 +28,7 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>

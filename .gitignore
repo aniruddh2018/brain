@@ -40,3 +40,7 @@ next-env.d.ts
 
 # Netlify
 .netlify/
+
+# Caches - Make sure these never get committed
+.next/cache/
+node_modules/.cache/

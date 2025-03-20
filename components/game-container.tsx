@@ -1,8 +1,4 @@
-import type { ReactNode } from "react"
-
-interface GameContainerProps {
-  children: ReactNode
-}
+import { GameContainerProps } from "./GameContainer.types";
 
 export default function GameContainer({ children }: GameContainerProps) {
   return (
