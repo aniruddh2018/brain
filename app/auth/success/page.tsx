@@ -1,11 +1,38 @@
 'use client'
 
+import { Suspense } from 'react'
+import { Loader2 } from 'lucide-react'
+
+// This is the main page component that Next.js will render
+export default function AuthSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingState message="Loading..." />}>
+      <AuthSuccessContent />
+    </Suspense>
+  )
+}
+
+// Loading state component to show during suspense
+function LoadingState({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
+      <div className="w-full max-w-md p-8 space-y-6 text-center bg-white rounded-lg shadow-lg">
+        <h1 className="text-2xl font-bold text-gray-800">{message}</h1>
+        <div className="flex justify-center">
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+        </div>
+        <p className="text-gray-600">Please wait while we process your request.</p>
+      </div>
+    </div>
+  )
+}
+
+// The actual client component that uses search params
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
 import { saveUserData, getUserData } from '@/lib'
 
-export default function AuthSuccess() {
+function AuthSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState('Authenticating...')
