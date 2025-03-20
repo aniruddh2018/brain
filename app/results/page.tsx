@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useRef, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -22,6 +22,7 @@ import DomainDetail from "@/components/dashboard/domain-detail"
 import StudyRecommendations from "@/components/dashboard/study-recommendations"
 import { saveUserReport } from "@/lib"
 import type { DomainAnalysis } from "@/lib"
+import { NavBar } from "@/components/ui/nav-bar"
 
 // Import Chart.js components to fix doughnut error
 import {
@@ -333,6 +334,55 @@ function getPractices(strengths: { name: string; score: number }[], weaknesses: 
   return practices;
 }
 
+// Add this component to safely wrap StudyRecommendations
+function SafeStudyRecommendations(props: {
+  domainAnalyses: any[];
+  strengths: any[];
+  weaknesses: any[];
+  getLearningStyle: () => any;
+}) {
+  // Create a safe version of learning style with fallbacks
+  const safeLearningStyle = () => {
+    try {
+      const learningStyle = props.getLearningStyle();
+      
+      // If the learning style is invalid or missing primaryStyle, provide defaults
+      if (!learningStyle || !learningStyle.primaryStyle) {
+        console.warn("Invalid learning style detected, using fallback");
+        return {
+          primaryStyle: "Visual",
+          analysisText: "Learning style analysis unavailable.",
+          recommendations: [],
+          description: "Visual learners learn best through seeing information.",
+          teachingStrategies: ["Use visual aids", "Provide diagrams"],
+          accommodations: ["Use color coding", "Provide written materials"]
+        };
+      }
+      
+      return learningStyle;
+    } catch (error) {
+      console.error("Error getting learning style:", error);
+      return {
+        primaryStyle: "Visual",
+        analysisText: "Error retrieving learning style data.",
+        recommendations: [],
+        description: "Visual learners learn best through seeing information.",
+        teachingStrategies: ["Use visual aids", "Provide diagrams"],
+        accommodations: ["Use color coding", "Provide written materials"]
+      };
+    }
+  };
+  
+  return (
+    <StudyRecommendations
+      domainAnalyses={props.domainAnalyses || []}
+      strengths={props.strengths || []}
+      weaknesses={props.weaknesses || []}
+      learningStyle={safeLearningStyle()}
+    />
+  );
+}
+
 export default function ResultsPage() {
   const router = useRouter()
   const [userData, setUserData] = useState<any>(null)
@@ -539,6 +589,10 @@ export default function ResultsPage() {
     }
   }
 
+  const handleViewAllReports = () => {
+    router.push("/my-reports");
+  }
+
   const handleGenerateReport = async () => {
     // Report generation functionality has been removed
     console.log("Report feature removed");
@@ -698,52 +752,35 @@ export default function ResultsPage() {
   }
 
   const { strengths, weaknesses } = getDomainStrengthsAndWeaknesses()
-  const recommendations = getRecommendations().slice(0, 3);
+  const rawRecommendations = getRecommendations().slice(0, 3);
+  
+  // Transform the raw recommendations (strings) into objects with title and description
+  const recommendations = rawRecommendations.map(rec => {
+    const parts = rec.split(':').map(part => part.trim());
+    return {
+      title: parts[0] || 'Recommendation',
+      description: parts.length > 1 ? parts.slice(1).join(': ') : rec
+    };
+  });
   const domainInsights = getDomainInsights();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 pb-12">
-      {analysisLoading ? (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex flex-col items-center">
-              <div className="h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-              <h3 className="text-lg font-semibold mb-2">Analyzing your results...</h3>
-              <p className="text-gray-600 text-center">
-                We're processing your cognitive assessment data to provide personalized insights.
-              </p>
-                              </div>
-                            </div>
-                          </div>
-      ) : null}
-      
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
-        {hasSkippedGames() && (
-          <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6 rounded-md">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <AlertTriangle className="h-5 w-5 text-amber-400" />
-                              </div>
-              <div className="ml-3">
-                <p className="text-sm text-amber-700">
-                  <span className="font-medium">Note:</span> Some games were skipped during your assessment. 
-                  The results shown include estimated scores for those games, which may not accurately reflect your abilities.
-                  For a more accurate assessment, consider completing all games.
-                </p>
-                            </div>
-                          </div>
-                      </div>
-        )}
-        
-        <Card className="mb-6">
-          <CardHeader className="pb-0">
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-2xl md:text-3xl font-bold">Cognitive Assessment Results</CardTitle>
-                <CardDescription className="text-base mt-1">
-                  {userData?.name}, {userData?.age} • {userData?.difficulty} difficulty
-                </CardDescription>
-              </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Use the shared NavBar component */}
+      <NavBar />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Card className="overflow-hidden shadow-lg">
+          <CardHeader className="border-b bg-white pb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+            <div>
+                <CardTitle className="text-2xl font-bold mb-1">
+                  Cognitive Assessment Results
+                </CardTitle>
+              <CardDescription>
+                  {userData?.name ? `${userData.name}'s Assessment` : 'Your Assessment'}
+              </CardDescription>
+            </div>
               <div className="flex space-x-2">
                 <TooltipProvider>
                           <Tooltip>
@@ -755,7 +792,7 @@ export default function ResultsPage() {
                         onClick={handleStartOver}
                       >
                         <RotateCcw className="h-4 w-4" />
-                      </Button>
+              </Button>
                             </TooltipTrigger>
                             <TooltipContent>
                       <p>Start Over</p>
@@ -763,7 +800,7 @@ export default function ResultsPage() {
                           </Tooltip>
                         </TooltipProvider>
                     </div>
-                        </div>
+            </div>
           </CardHeader>
           
           <CardContent>
@@ -812,7 +849,7 @@ export default function ResultsPage() {
                             Score includes estimated data from skipped games
                           </p>
                         ) : (
-                          <p className="text-sm text-gray-500">Based on performance across all cognitive domains</p>
+                        <p className="text-sm text-gray-500">Based on performance across all cognitive domains</p>
                         )}
                       </div>
                     </CardContent>
@@ -947,19 +984,27 @@ export default function ResultsPage() {
                   </p>
                 </div>
                 
-                <StudyRecommendations 
+                <SafeStudyRecommendations
                   domainAnalyses={domainInsights}
                   strengths={strengths}
                   weaknesses={weaknesses}
-                  learningStyle={getLearningStyle()}
+                  getLearningStyle={getLearningStyle}
                 />
               </TabsContent>
             </Tabs>
 
             <div className="mt-8 flex flex-col items-center">
-              <Button variant="outline" onClick={handleStartOver} className="mt-4">
+              <div className="flex space-x-4">
+              <Button variant="outline" onClick={handleStartOver}>
                 Start Over
               </Button>
+                <Button onClick={handleViewAllReports} className="bg-indigo-600 hover:bg-indigo-700">
+                  View All Reports
+              </Button>
+              </div>
+              <p className="mt-4 text-sm text-gray-500">
+                You can access your reports anytime from the "My Reports" section
+              </p>
             </div>
           </CardContent>
         </Card>

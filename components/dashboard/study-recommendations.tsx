@@ -14,25 +14,56 @@ interface StudyRecommendationsProps {
 }
 
 export default function StudyRecommendations({ 
-  domainAnalyses, 
-  strengths, 
-  weaknesses,
+  domainAnalyses = [], 
+  strengths = [],
+  weaknesses = [],
   learningStyle
 }: StudyRecommendationsProps) {
+  
+  // Ensure learning style has valid properties with fallbacks
+  const safeStyle = {
+    primaryStyle: learningStyle?.primaryStyle || "Visual Learner",
+    analysisText: learningStyle?.analysisText || "Learning style information is not available.",
+    recommendations: learningStyle?.recommendations || [],
+    description: learningStyle?.description || "Learning style description not available.",
+    teachingStrategies: learningStyle?.teachingStrategies || [],
+    accommodations: learningStyle?.accommodations || []
+  };
   
   // Map learning style to icon
   const getLearningStyleIcon = () => {
     const styleIconMap: Record<string, React.ElementType> = {
       "Sequential Learner": Clock,
+      "Sequential": Clock,
       "Logical Learner": Brain,
+      "Logical": Brain,
       "Verbal/Linguistic Learner": Book,
+      "Verbal": Book,
+      "Linguistic": Book,
       "Visual Learner": Sparkles,
+      "Visual": Sparkles,
       "Visual-Spatial Learner": Sparkles,
+      "Spatial": Sparkles,
       "Kinesthetic Learner": Users,
-      "Multimodal Learner": Lightbulb
+      "Kinesthetic": Users,
+      "Physical": Users,
+      "Multimodal Learner": Lightbulb,
+      "Multimodal": Lightbulb
     };
     
-    return styleIconMap[learningStyle.primaryStyle] || Lightbulb;
+    // Make sure we have a valid primaryStyle
+    if (!safeStyle.primaryStyle) {
+      console.warn("No primary style found, using default icon");
+      return Lightbulb;
+    }
+    
+    // Try to find an icon match by checking different variations of the style name
+    const normalizedStyle = safeStyle.primaryStyle.trim();
+    const Icon = styleIconMap[normalizedStyle] || 
+                 styleIconMap[normalizedStyle.split(' ')[0]] || 
+                 Lightbulb;
+    
+    return Icon;
   };
   
   // Generate teaching strategies based on profile
@@ -93,11 +124,11 @@ export default function StudyRecommendations({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl">
             <LearningStyleIcon className="h-5 w-5 text-indigo-500" />
-            Learning Style: {learningStyle.primaryStyle}
+            Learning Style: {safeStyle.primaryStyle}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-700 mb-4">{learningStyle.description}</p>
+          <p className="text-gray-700 mb-4">{safeStyle.description}</p>
           
           <div className="grid gap-4 md:grid-cols-2">
             <div>
@@ -106,7 +137,7 @@ export default function StudyRecommendations({
                 Teaching Strategies
               </h3>
               <ul className="space-y-3">
-                {learningStyle.teachingStrategies?.map((strategy: string, index: number) => (
+                {safeStyle.teachingStrategies?.map((strategy: string, index: number) => (
                   <li key={index} className="p-3 rounded-md bg-indigo-50 border border-indigo-100">
                     <p className="text-sm text-gray-700">{strategy}</p>
                   </li>
@@ -126,7 +157,7 @@ export default function StudyRecommendations({
                 Classroom Accommodations
               </h3>
               <ul className="space-y-2">
-                {learningStyle.accommodations?.map((accommodation: string, index: number) => (
+                {safeStyle.accommodations?.map((accommodation: string, index: number) => (
                   <li key={index} className="flex items-start gap-2">
                     <div className="mt-1 min-w-4">
                       <div className="h-2 w-2 rounded-full bg-blue-400" />

@@ -1,3 +1,5 @@
+import withPWA from 'next-pwa';
+
 let userConfig = undefined
 try {
   userConfig = await import('./v0-user-next.config')
@@ -14,7 +16,6 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
     domains: ['txndzhjxsijyjeuoqfxl.supabase.co'],
     remotePatterns: [
       {
@@ -27,14 +28,39 @@ const nextConfig = {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
+    optimizeCss: true,
+    optimizePackageImports: [
+      'lucide-react', 
+      '@radix-ui/react-icons', 
+      'date-fns',
+      'recharts'
+    ],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
   },
   output: 'standalone',
   poweredByHeader: false,
   reactStrictMode: true,
   trailingSlash: true,
+  compress: true,
 }
 
 mergeConfig(nextConfig, userConfig)
+
+// Wrap with PWA only in production
+const config = process.env.NODE_ENV === 'production' 
+  ? withPWA({
+      dest: 'public',
+      disable: process.env.NODE_ENV === 'development',
+      register: true,
+      skipWaiting: true,
+      sw: 'service-worker.js',
+      cacheOnFrontEndNav: true,
+    })(nextConfig)
+  : nextConfig;
 
 function mergeConfig(nextConfig, userConfig) {
   if (!userConfig) {
@@ -56,4 +82,4 @@ function mergeConfig(nextConfig, userConfig) {
   }
 }
 
-export default nextConfig
+export default config

@@ -105,7 +105,7 @@ async function generateDashboardContent(formattedData: any): Promise<DashboardCo
       Look for patterns in speed-accuracy tradeoffs, consistency, strategy approaches, and error patterns.
       Identify cross-domain strengths and any exceptional performance areas.
       
-      Your analysis should return a JSON object with the following structure:
+      Your analysis must return valid JSON without any markdown formatting, with the following structure:
       {
         "overallScore": number,
         "summaryAnalysis": string,
@@ -114,6 +114,9 @@ async function generateDashboardContent(formattedData: any): Promise<DashboardCo
         "recommendations": array of recommendation strings,
         "detailedPerformanceData": object with any additional performance data
       }
+      
+      DO NOT wrap your response in markdown code blocks or backticks.
+      Return ONLY the JSON object.
     `;
     
     // Generate text using AI model
@@ -123,8 +126,22 @@ async function generateDashboardContent(formattedData: any): Promise<DashboardCo
     const text = response.text();
     
     try {
-      // Parse the JSON response
-      const parsedResponse = JSON.parse(text);
+      // Extract JSON from possible markdown formatting
+      let jsonText = text;
+      
+      // Check if response is wrapped in a code block
+      const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch && codeBlockMatch[1]) {
+        jsonText = codeBlockMatch[1].trim();
+        console.log("Extracted JSON from code block");
+      }
+      
+      // Remove any remaining markdown artifacts
+      jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      
+      // Parse the cleaned JSON response
+      console.log("Attempting to parse JSON response");
+      const parsedResponse = JSON.parse(jsonText);
       return parsedResponse;
     } catch (parseError) {
       console.error("Error parsing AI response:", parseError);

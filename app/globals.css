@@ -3,7 +3,99 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Core UI Styles */
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+/* Set default font smoothing */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  overflow-x: hidden;
+}
+
+/* Basic Utility Classes */
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  max-height: -webkit-fill-available;
+}
+
+.overflow-hidden {
+  overflow: hidden !important;
+}
+
+/* Essential animations - minimal set */
+@keyframes badge-pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+@keyframes subtle-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Animation classes */
+.animate-badge-pulse {
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+.animate-subtle-bounce {
+  animation: subtle-bounce 2s ease-in-out infinite;
+}
+
+.bg-gradient-to-r {
+  background-size: 200% 100%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Accessibility Considerations */
+@media (prefers-reduced-motion) {
+  .animate-badge-pulse,
+  .animate-subtle-bounce,
+  .bg-gradient-to-r,
+  .transition-all,
+  .transition-transform {
+    animation: none !important;
+    transition-duration: 0.1s !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--foreground-rgb));
+  outline-offset: 2px;
+}
+
+/* For touch devices */
+@media (hover: none) {
+  .cursor-pointer {
+    cursor: default;
+  }
 }
 
 @layer utilities {
@@ -147,15 +239,6 @@ html, body {
 }
 
 /* Add animations for game badge and icon */
-@keyframes badge-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
-  }
-}
-
 @keyframes subtle-bounce {
   0%, 100% {
     transform: translateY(0);
@@ -163,10 +246,6 @@ html, body {
   50% {
     transform: translateY(-2px);
   }
-}
-
-.animate-badge-pulse {
-  animation: badge-pulse 3s infinite;
 }
 
 .animate-subtle-bounce {

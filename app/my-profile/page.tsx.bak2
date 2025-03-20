@@ -1,0 +1,335 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { NavBar } from "@/components/ui/nav-bar"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Brain, User, Clock, Settings, FileText, Edit2, Save, Loader2, Eye, Book, PenLine } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "sonner"
+import { getUserData, saveUserData, requireAuth, getCurrentUserId, getCurrentUserData, refreshUserData } from "@/lib"
+
+export default function MyProfilePage() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    age: '',
+    education: '',
+    email: ''
+  })
+
+  useEffect(() => {
+    const checkAuth = () => {
+      if (!requireAuth(router.push)) {
+        return
+      }
+      
+      const userId = getCurrentUserId()
+      if (userId) {
+        fetchUserData(userId)
+      }
+    }
+    
+    checkAuth()
+  }, [router])
+
+  const fetchUserData = async (userId: string) => {
+    try {
+      setIsLoading(true)
+      
+      // First try to get data from localStorage for immediate display
+      const localData = getCurrentUserData()
+      
+      if (localData) {
+        // Set initial data from localStorage
+        setUser(localData)
+        setFormData({
+          name: localData.name || '',
+          age: localData.age?.toString() || '',
+          education: localData.education || '',
+          email: localData.email || ''
+        })
+      }
+      
+      // Then fetch the most up-to-date data from the database
+      try {
+        const updatedData = await refreshUserData(userId)
+        
+        if (updatedData) {
+          // Update with the most recent data from the database
+          setUser(updatedData)
+          setFormData({
+            name: updatedData.name || '',
+            age: updatedData.age?.toString() || '',
+            education: updatedData.education || '',
+            email: updatedData.email || ''
+          })
+        }
+      } catch (dbError) {
+        console.error('Error fetching data from database:', dbError)
+        // Continue with local data if available
+        if (!localData) {
+          setError('Could not load your profile data')
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error)
+      setError('Failed to load profile data')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSaveProfile = async () => {
+    try {
+      setIsLoading(true)
+      
+      const userId = getCurrentUserId()
+      if (!userId) {
+        setError('User ID not found')
+        return
+      }
+      
+      const updatedUserData = {
+        id: userId,
+        name: formData.name,
+        age: parseInt(formData.age) || user.age,
+        education: formData.education,
+        email: formData.email,
+        google_id: user.google_id,
+        avatar_url: user.avatar_url
+      }
+      
+      // Save to database
+      await saveUserData(updatedUserData)
+      
+      // Refresh user data to ensure we have the latest
+      await refreshUserData(userId)
+      
+      // Update local state with the form data
+      setUser((prev: Record<string, any>) => {
+        return { ...prev, ...updatedUserData };
+      })
+      
+      setIsEditing(false)
+      
+    } catch (error) {
+      console.error('Error saving profile:', error)
+      setError('Failed to save profile changes')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const goToReports = () => {
+    router.push('/my-reports')
+  }
+
+  const goToAssessments = () => {
+    router.push('/games')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <NavBar />
+        <div className="flex flex-col items-center justify-center flex-1 p-4">
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+          <p className="mt-4 text-lg text-gray-600">Loading your profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <NavBar />
+        <div className="flex flex-col items-center justify-center flex-1 p-4">
+          <div className="w-full max-w-lg p-6 bg-white rounded-lg shadow-md">
+            <h1 className="mb-4 text-2xl font-bold text-red-500">Error</h1>
+            <p className="text-gray-700">{error}</p>
+            <Button 
+              className="mt-6" 
+              onClick={() => router.push('/')}
+            >
+              Go to Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <NavBar />
+      <div className="flex-1 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="mb-8 text-3xl font-bold text-gray-800">My Profile</h1>
+          
+          <Card className="p-6 mb-8 shadow-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">Personal Information</h2>
+              {!isEditing ? (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsEditing(true)} 
+                  className="flex items-center gap-2"
+                >
+                  <PenLine className="w-4 h-4" />
+                  Edit Profile
+                </Button>
+              ) : (
+                <Button 
+                  variant="default" 
+                  onClick={handleSaveProfile} 
+                  className="flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Changes
+                </Button>
+              )}
+            </div>
+            
+            {isEditing ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input 
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="age">Age</Label>
+                  <Input 
+                    id="age"
+                    name="age"
+                    type="number"
+                    value={formData.age}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="education">Education Level</Label>
+                  <Select 
+                    onValueChange={(value) => handleSelectChange('education', value)}
+                    defaultValue={formData.education}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select education level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="primary">Primary School</SelectItem>
+                      <SelectItem value="secondary">Secondary School</SelectItem>
+                      <SelectItem value="highschool">High School</SelectItem>
+                      <SelectItem value="bachelors">Bachelor's Degree</SelectItem>
+                      <SelectItem value="masters">Master's Degree</SelectItem>
+                      <SelectItem value="doctorate">Doctorate</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input 
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    disabled
+                  />
+                  <p className="text-xs text-gray-500">Email cannot be changed</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Full Name</h3>
+                  <p className="mt-1 text-lg text-gray-900">{user?.name || 'Not provided'}</p>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Age</h3>
+                  <p className="mt-1 text-lg text-gray-900">{user?.age || 'Not provided'}</p>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Education Level</h3>
+                  <p className="mt-1 text-lg text-gray-900">
+                    {(() => {
+                      const educationMap: {[key: string]: string} = {
+                        primary: 'Primary School',
+                        secondary: 'Secondary School',
+                        highschool: 'High School',
+                        bachelors: 'Bachelor\'s Degree',
+                        masters: 'Master\'s Degree',
+                        doctorate: 'Doctorate',
+                        other: 'Other'
+                      }
+                      return user?.education ? educationMap[user.education] || user.education : 'Not provided'
+                    })()}
+                  </p>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Email</h3>
+                  <p className="mt-1 text-lg text-gray-900">{user?.email || 'Not provided'}</p>
+                </div>
+              </div>
+            )}
+          </Card>
+          
+          <div className="grid gap-6 mb-8 md:grid-cols-2">
+            <Card className="flex flex-col items-center p-6 text-center shadow-md">
+              <Eye className="w-12 h-12 mb-4 text-blue-500" />
+              <h2 className="mb-2 text-xl font-semibold">View Your Reports</h2>
+              <p className="mb-6 text-gray-600">See your cognitive assessment results and analysis</p>
+              <Button 
+                className="w-full mt-auto"
+                onClick={goToReports}
+              >
+                View Reports
+              </Button>
+            </Card>
+            
+            <Card className="flex flex-col items-center p-6 text-center shadow-md">
+              <Book className="w-12 h-12 mb-4 text-purple-500" />
+              <h2 className="mb-2 text-xl font-semibold">Take Assessments</h2>
+              <p className="mb-6 text-gray-600">Complete cognitive games and assessments</p>
+              <Button 
+                className="w-full mt-auto"
+                variant="outline"
+                onClick={goToAssessments}
+              >
+                Go to Assessments
+              </Button>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+} 

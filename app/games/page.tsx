@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import GameContainer from "@/components/game-container"
-import MemoryMatch from "@/components/games/memory-match"
-import TowerOfHanoi from "@/components/games/tower-of-hanoi"
-import WordPuzzle from "@/components/games/word-puzzle"
-import SpatialPattern from "@/components/games/spatial-pattern"
-import MazeRun from "@/components/games/maze-run"
-import StroopChallenge from "@/components/games/stroop-challenge"
+import dynamic from 'next/dynamic'
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { 
@@ -20,9 +15,7 @@ import {
   Activity 
 } from "lucide-react"
 import { supabase, saveGameMetrics, saveUserData } from "@/lib/supabase-fixed"
-import { 
-  GameData,
-  BaseGameMetrics,
+import {
   MemoryMatchMetrics,
   TowerOfHanoiMetrics,
   WordPuzzleMetrics,
@@ -30,7 +23,54 @@ import {
   MazeRunMetrics,
   StroopChallengeMetrics,
   GameMetrics
-} from "@/types/cognitive-new/games"
+} from "@/types/cognitive/game-metrics.types"
+
+// Dynamically import game components with loading fallbacks
+const MemoryMatch = dynamic(() => import('@/components/games/memory-match'), {
+  loading: () => <GameLoadingFallback name="Memory Match" />,
+  ssr: false
+})
+
+const TowerOfHanoi = dynamic(() => import('@/components/games/tower-of-hanoi'), {
+  loading: () => <GameLoadingFallback name="Tower of Hanoi" />,
+  ssr: false
+})
+
+const WordPuzzle = dynamic(() => import('@/components/games/word-puzzle'), {
+  loading: () => <GameLoadingFallback name="Word Puzzle" />,
+  ssr: false
+})
+
+const SpatialPattern = dynamic(() => import('@/components/games/spatial-pattern'), {
+  loading: () => <GameLoadingFallback name="Spatial Pattern" />,
+  ssr: false
+})
+
+const MazeRun = dynamic(() => import('@/components/games/maze-run'), {
+  loading: () => <GameLoadingFallback name="Maze Run" />,
+  ssr: false
+})
+
+const StroopChallenge = dynamic(() => import('@/components/games/stroop-challenge'), {
+  loading: () => <GameLoadingFallback name="Stroop Challenge" />,
+  ssr: false
+})
+
+// Game loading fallback component
+function GameLoadingFallback({ name }: { name: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 bg-white rounded-xl shadow-lg">
+      <div className="h-16 w-16 mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+        <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+      <h3 className="text-xl font-semibold text-gray-800">Loading {name}</h3>
+      <p className="text-gray-600 mt-2 text-center">Preparing your cognitive assessment...</p>
+    </div>
+  )
+}
 
 // Define interfaces for user data
 interface UserData {
@@ -55,65 +95,42 @@ export default function GamesPage() {
   const router = useRouter()
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [debugInfo, setDebugInfo] = useState<string>("")
   const [savingGame, setSavingGame] = useState(false)
 
   useEffect(() => {
-    // Get user data from localStorage (will be replaced with Supabase in future)
     const storedData = localStorage.getItem("userData")
     if (!storedData) {
       router.push("/")
       return
     }
 
-    // Log data loading
     const parsedData = JSON.parse(storedData)
-    console.log("Loaded user data:", parsedData)
     setUserData(parsedData)
     setLoading(false)
   }, [router])
 
   const handleGameComplete = async (gameMetrics: GameMetrics) => {
-    // Debug logging
-    console.log("Game completed with metrics:", gameMetrics)
-    setDebugInfo(`Game ${userData?.gameIndex} completed`)
+    if (!userData) return;
     
-    if (!userData) {
-      console.error("No user data available when completing game")
-      return
-    }
-
     const currentGameName = getGameName(userData.gameIndex)
-    console.log(`Completing ${currentGameName}, current index: ${userData.gameIndex}`)
-
-    // Save game metrics to Supabase (and localStorage for backward compatibility)
+    
+    // Save game metrics to Supabase
     const userId = localStorage.getItem('userId')
     if (userId && !savingGame) {
       try {
         setSavingGame(true)
         
-        // Log the data being sent to help debug
-        console.log('Saving completed game metrics:', {
+        await saveGameMetrics(userId, {
           name: currentGameName,
           metrics: gameMetrics,
           is_skipped: false
         });
-        
-        // Use the imported saveGameMetrics function from supabase-fixed
-        const result = await saveGameMetrics(userId, {
-          name: currentGameName,
-          metrics: gameMetrics,
-          is_skipped: false
-        });
-        
-        console.log(`Game metrics saved to Supabase for ${currentGameName}:`, result);
       } catch (error) {
-        console.error("Error saving game metrics to Supabase:", error);
+        // Keep only error logging for critical issues
+        console.error("Error saving game metrics:", error);
       } finally {
         setSavingGame(false)
       }
-    } else if (!userId) {
-      console.error("No user ID found in localStorage");
     }
 
     // Check if this is the last game (index 5 = StroopChallenge)
@@ -128,104 +145,54 @@ export default function GamesPage() {
         [currentGameName]: gameMetrics,
       },
     }
-
-    console.log("Updating to:", updatedUserData)
     
     // Save to localStorage
     localStorage.setItem("userData", JSON.stringify(updatedUserData))
     
     // Update state
     setUserData(updatedUserData)
-    setDebugInfo(`${currentGameName} completed, moving to game ${updatedUserData.gameIndex}`)
 
     // If all games are completed, go directly to results page
     if (isLastGame) {
-      console.log("Last game completed, navigating directly to results")
       router.push("/results")
     }
   }
 
-  // Force move to next game (for debugging)
+  // Force move to next game
   const forceNextGame = async () => {
     if (!userData) return
     
     const currentGameName = getGameName(userData.gameIndex);
     const userDifficulty = userData.difficulty;
     
-    // Create base metrics for skipped game - ensure is_skipped is set
-    let gameMetrics: any; // Use any temporarily to allow for additional fields
-    
-    // Define minimal base metrics for skipped games
-    const baseSkippedMetrics = {
+    // Create minimal metrics for skipped game
+    let gameMetrics: any = {
       score: 0,
       timeSpent: 0,
       difficulty: userDifficulty,
       is_skipped: true
     };
     
+    // Add game-specific null metrics based on the game type
     switch(currentGameName) {
       case "memoryMatch":
-        gameMetrics = {
-          ...baseSkippedMetrics,
-          memoryScore: null, // Set to null to indicate skipped
-          memory: null, // Add this to match possible alternate property name
-          matchesMade: 0,
-          incorrectAttempts: 0,
-          averageMatchTime: 0
-        };
+        gameMetrics = { ...gameMetrics, memoryScore: null, memory: null, matchesMade: 0, incorrectAttempts: 0, averageMatchTime: 0 };
         break;
       case "towerOfHanoi":
-        gameMetrics = {
-          ...baseSkippedMetrics,
-          planningScore: null, // Set to null
-          problemSolvingScore: null, // This is the field used in results page
-          movesCount: 0,
-          optimalMovesRatio: 0,
-          timePerMove: 0
-        };
+        gameMetrics = { ...gameMetrics, planningScore: null, problemSolvingScore: null, movesCount: 0, optimalMovesRatio: 0, timePerMove: 0 };
         break;
       case "wordPuzzle":
-        gameMetrics = {
-          ...baseSkippedMetrics,
-          languageScore: null,
-          vocabularyScore: null, // This is the field used in results page
-          wordsFound: 0,
-          hintsUsed: 0,
-          averageWordLength: 0
-        };
+        gameMetrics = { ...gameMetrics, languageScore: null, vocabularyScore: null, wordsFound: 0, hintsUsed: 0, averageWordLength: 0 };
         break;
       case "spatialPattern":
-        gameMetrics = {
-          ...baseSkippedMetrics,
-          spatialScore: null, // This is used in results page
-          spatialReasoningScore: null, // Add this to match the expected property name
-          patternsCompleted: 0,
-          accuracyRate: 0,
-          complexityLevel: 0
-        };
+        gameMetrics = { ...gameMetrics, spatialScore: null, spatialReasoningScore: null, patternsCompleted: 0, accuracyRate: 0, complexityLevel: 0 };
         break;
       case "mazeRun":
-        gameMetrics = {
-          ...baseSkippedMetrics,
-          navigationScore: null,
-          spatialNavigationScore: null, // This is used in results page
-          pathEfficiency: 0,
-          deadEndsEncountered: 0,
-          completionSpeed: 0
-        };
+        gameMetrics = { ...gameMetrics, navigationScore: null, spatialNavigationScore: null, pathEfficiency: 0, deadEndsEncountered: 0, completionSpeed: 0 };
         break;
       case "stroopChallenge":
-      default:
-        // Default to Stroop Challenge metrics if game name is not recognized
-        gameMetrics = {
-          ...baseSkippedMetrics,
-          attentionScore: null,
-          cognitiveFlexibilityScore: null, // This is used in results page
-          correctResponses: 0,
-          incorrectResponses: 0,
-          averageResponseTime: 0,
-          interferenceEffect: 0
-        };
+        gameMetrics = { ...gameMetrics, attentionScore: null, cognitiveFlexibilityScore: null, correctResponses: 0, incorrectResponses: 0, averageResponseTime: 0, interferenceEffect: 0 };
+        break;
     }
     
     // Save skipped game metrics to Supabase
@@ -233,22 +200,13 @@ export default function GamesPage() {
     if (userId && !savingGame) {
       try {
         setSavingGame(true)
-        
-        // Log the data being sent to help debug
-        console.log('Saving skipped game metrics:', {
-          name: currentGameName,
-          metrics: gameMetrics,
-          is_skipped: true
-        });
-        
         await saveGameMetrics(userId, {
           name: currentGameName,
           metrics: gameMetrics,
           is_skipped: true
         });
-        console.log(`Skipped game metrics saved to Supabase for ${currentGameName}`);
       } catch (error) {
-        console.error("Error saving skipped game metrics to Supabase:", error);
+        console.error("Error saving skipped game metrics:", error);
       } finally {
         setSavingGame(false)
       }
@@ -266,11 +224,10 @@ export default function GamesPage() {
     localStorage.setItem("userData", JSON.stringify(updatedUserData))
     setUserData(updatedUserData)
 
-    // Check if this was the last game (index 5 = StroopChallenge)
+    // Check if this was the last game
     const isLastGame = userData.gameIndex === 5;
     
     if (isLastGame) {
-      console.log("Last game skipped, navigating directly to results")
       router.push("/results")
     }
   }
@@ -374,7 +331,7 @@ export default function GamesPage() {
       case 5:
         return <StroopChallenge difficulty={userData.difficulty} onComplete={handleGameComplete} />
       default:
-        return null // No need to return anything here as completion UI is handled separately
+        return null
     }
   }
 
@@ -419,13 +376,6 @@ export default function GamesPage() {
                 </div>
               </div>
               
-              {/* Debug info (only in development) */}
-              {process.env.NODE_ENV === "development" && (
-                <div className="mb-4 p-2 border border-gray-200 rounded-md bg-gray-50">
-                  <p className="text-xs text-gray-500">{debugInfo}</p>
-                </div>
-              )}
-              
               {/* Current game */}
               <div className="mb-8">
                 {userData.gameIndex < 6 ? (
@@ -464,11 +414,6 @@ export default function GamesPage() {
                   </div>
                 )}
               </div>
-              
-              {/* Footer info */}
-              <div className="text-center">
-                {/* Footer content removed */}
-              </div>
             </>
           ) : (
             <div className="p-8 text-center">
@@ -486,4 +431,6 @@ export default function GamesPage() {
     </main>
   )
 }
+
+
 

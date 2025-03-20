@@ -28,88 +28,113 @@ export function useCognitiveAnalysis(userData: any, options: UseCognitiveAnalysi
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to fetch analysis data
   const fetchAnalysis = async () => {
-    if (!userData || !userData.metrics) {
-      setError('No user data or metrics available');
-      return;
-    }
-
+    if (!userData) return;
+    
     setLoading(true);
     setError(null);
-
+    
     try {
-      // Generate full cognitive report
-      const data = await generateReport(userData, userData.metrics);
-
-      console.log('Generated cognitive report:', data);
-
-      // Enhance with additional computed properties
-      const extendedData: ExtendedCognitiveReport = {
-        ...data,
-        strengths: extractStrengths(data),
-        weaknesses: extractWeaknesses(data),
-        relationshipInsights: generateRelationshipInsights(data),
-        summary: generateSummary(data)
+      // Generate cognitive report
+      console.log("Fetching cognitive analysis for user:", userData.id);
+      const report = await generateReport(userData, userData.metrics);
+      
+      // Add UI-specific properties to the report
+      const enhancedReport: ExtendedCognitiveReport = {
+        ...report,
+        strengths: extractStrengths(report),
+        weaknesses: extractWeaknesses(report),
+        relationshipInsights: generateRelationshipInsights(report),
+        summary: generateSummary(report),
+        overallScore: report.overallScore || 0 // Ensure overallScore has a default value
       };
       
-      setAnalysisData(extendedData);
+      console.log("Successfully processed cognitive analysis");
+      setAnalysisData(enhancedReport);
     } catch (err) {
-      console.error('Error generating cognitive analysis:', err);
-      setError('Failed to generate analysis. Please try again.');
+      console.error('Error fetching cognitive analysis:', err);
+      
+      // Provide more detailed error information based on the error type
+      let errorMessage = 'Failed to generate cognitive analysis. Please try again.';
+      
+      if (err instanceof SyntaxError) {
+        errorMessage = 'Error parsing cognitive analysis data. The report format may be invalid.';
+        console.error('JSON parsing error details:', err.message);
+      } else if (err instanceof Error) {
+        errorMessage = `Analysis error: ${err.message}`;
+      }
+      
+      // Log additional debugging information
+      console.error('Error context:', { 
+        errorType: err instanceof Error ? err.constructor.name : typeof err,
+        userData: userData ? { id: userData.id } : 'No user data'
+      });
+      
+      setError(errorMessage);
+      
+      // Create a minimal fallback report to prevent UI failures
+      const fallbackReport: ExtendedCognitiveReport = {
+        userData: userData,
+        overallScore: 0,
+        summaryAnalysis: "Unable to generate analysis report. Please try again later.",
+        domainAnalyses: [],
+        learningStyle: {
+          primaryStyle: "Visual",
+          analysisText: "Learning style analysis unavailable.",
+          recommendations: [],
+          description: "Visual learners learn best through seeing information."
+        },
+        recommendations: ["Try running the assessment again."],
+        detailedPerformanceData: {},
+        strengths: [],
+        weaknesses: [],
+        relationshipInsights: [],
+        summary: "Analysis report generation failed. This could be due to a temporary issue."
+      };
+      
+      setAnalysisData(fallbackReport);
     } finally {
       setLoading(false);
     }
   };
 
-  // Call fetchAnalysis on mount if autoFetch is enabled
   useEffect(() => {
     if (autoFetch && userData) {
       fetchAnalysis();
     }
   }, [userData, autoFetch]);
 
-  // Extract domain scores from the analysis data
+  // Get domain scores from the analysis data
   const getDomainScores = (): DomainScores => {
-    // Default empty scores
-    const defaultScores: DomainScores = {
-      memory: 0,
-      problemSolving: 0,
-      vocabulary: 0,
-      spatialReasoning: 0,
-      navigation: 0,
-      cognitiveFlexibility: 0
-    };
-
-    if (!userData?.metrics) {
-      return defaultScores;
+    if (!analysisData) {
+      return {
+        memory: 0,
+        problemSolving: 0,
+        vocabulary: 0,
+        spatialReasoning: 0,
+        navigation: 0,
+        cognitiveFlexibility: 0
+      };
     }
 
-    // If we have analysis data with domain analyses, use those scores
-    if (analysisData?.domainAnalyses && analysisData.domainAnalyses.length > 0) {
-      return analysisData.domainAnalyses.reduce<DomainScores>(
-        (acc, domain) => {
-          const domainKey = domain.domain.toLowerCase().replace(/\s+/g, '') as keyof DomainScores;
-          acc[domainKey] = Math.round(domain.score);
-          return acc;
-        }, 
-        { ...defaultScores } // Clone the default scores
-      );
-    }
-    
-    // Fallback: Extract directly from metrics
-    const m = userData.metrics;
+    // Map domain analyses to scores
+    const scores: any = {};
+    analysisData.domainAnalyses.forEach((analysis: DomainAnalysis) => {
+      const domain = analysis.domain.toLowerCase().replace(/\s+/g, '');
+      scores[domain] = analysis.score;
+    });
+
     return {
-      memory: Math.round(m.memoryMatch?.memoryScore || 0),
-      problemSolving: Math.round(m.towerOfHanoi?.problemSolvingScore || 0),
-      vocabulary: Math.round(m.wordPuzzle?.vocabularyScore || 0),
-      spatialReasoning: Math.round(m.spatialPattern?.spatialScore || 0),
-      navigation: Math.round(m.mazeRun?.spatialNavigationScore || 0),
-      cognitiveFlexibility: Math.round(m.stroopChallenge?.cognitiveFlexibilityScore || 0)
+      memory: scores.memory || 0,
+      problemSolving: scores.problemsolving || 0,
+      vocabulary: scores.vocabulary || 0,
+      spatialReasoning: scores.spatialreasoning || 0,
+      navigation: scores.navigation || 0,
+      cognitiveFlexibility: scores.cognitiveflexibility || 0
     };
   };
 
-  // Create radar chart data from domain scores
+  // Create data for the radar chart
   const createRadarData = () => {
     const scores = getDomainScores();
     
@@ -135,97 +160,66 @@ export function useCognitiveAnalysis(userData: any, options: UseCognitiveAnalysi
           ],
           backgroundColor: 'rgba(99, 102, 241, 0.2)',
           borderColor: 'rgba(99, 102, 241, 1)',
-          borderWidth: 2
+          borderWidth: 2,
+          pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: 'rgba(99, 102, 241, 1)'
         }
       ]
     };
   };
 
-  // Derive strengths and weaknesses for the user
+  // Get strengths and weaknesses
   const getStrengthsAndWeaknesses = (): { 
     strengths: { name: string; score: number }[]; 
     weaknesses: { name: string; score: number }[] 
   } => {
-    if (analysisData?.strengths && analysisData?.weaknesses) {
-      return {
-        strengths: analysisData.strengths,
-        weaknesses: analysisData.weaknesses
-      };
+    if (!analysisData) {
+      return { strengths: [], weaknesses: [] };
     }
 
-    // Calculate strengths/weaknesses from domain scores
-    const scores = getDomainScores();
-    const scorePairs = Object.entries(scores).map(([domain, score]) => ({
-      name: formatDomainName(domain),
-      score
-    }));
-    
-    // Sort by score (highest to lowest)
-    scorePairs.sort((a, b) => b.score - a.score);
-    
-    // Take top 3 as strengths, bottom 3 as weaknesses
     return {
-      strengths: scorePairs.slice(0, 3),
-      weaknesses: scorePairs.slice(-3).reverse()
+      strengths: analysisData.strengths || [],
+      weaknesses: analysisData.weaknesses || []
     };
   };
 
   // Format domain name for display
   const formatDomainName = (domain: string): string => {
-    const displayNames: { [key: string]: string } = {
-      memory: 'Memory',
-      problemsolving: 'Problem Solving',
-      vocabulary: 'Vocabulary',
-      spatialreasoning: 'Spatial Reasoning',
-      navigation: 'Navigation',
-      cognitiveflexibility: 'Cognitive Flexibility'
-    };
-    
-    return displayNames[domain.toLowerCase()] || domain;
+    switch (domain.toLowerCase()) {
+      case 'memory': return 'Memory Recall';
+      case 'problemsolving': return 'Problem Solving';
+      case 'vocabulary': return 'Language & Vocabulary';
+      case 'spatialreasoning': return 'Spatial Reasoning';
+      case 'navigation': return 'Spatial Navigation';
+      case 'cognitiveflexibility': return 'Cognitive Flexibility';
+      default: return domain;
+    }
   };
 
-  // Get recommendations based on cognitive profile
+  // Get recommendations
   const getRecommendations = () => {
-    if (analysisData?.recommendations) {
-      return analysisData.recommendations.map((rec: any) => ({
-        title: typeof rec === 'string' ? rec : rec.title || 'Recommendation',
-        description: typeof rec === 'string' ? '' : rec.description || ''
-      }));
-    }
+    if (!analysisData) return [];
     
-    // Generate basic recommendations based on strengths/weaknesses
-    const { strengths, weaknesses } = getStrengthsAndWeaknesses();
-    
-    const recommendations = [
-      ...strengths.map(strength => ({
-        title: `Leverage Your ${strength.name} Strengths`,
-        description: `Continue developing your ${strength.name.toLowerCase()} skills with more advanced activities.`
-      })),
-      ...weaknesses.map(weakness => ({
-        title: `Develop ${weakness.name} Skills`,
-        description: `Focus on improving your ${weakness.name.toLowerCase()} abilities with targeted exercises.`
-      }))
-    ];
-    
-    return recommendations.slice(0, 6);
+    // Filter out duplicate recommendations
+    const seen = new Set();
+    return (analysisData.recommendations || []).filter(rec => {
+      // Normalize the recommendation to avoid nearly-duplicate entries
+      const normalized = rec.toLowerCase().trim();
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
   };
 
-  // Get domain insights from the analysis data
+  // Get domain insights
   const getDomainInsights = (): DomainAnalysis[] => {
-    if (analysisData?.domainAnalyses) {
-      return analysisData.domainAnalyses;
-    }
+    if (!analysisData) return [];
     
-    // Generate basic insights if none available
-    const scores = getDomainScores();
-    
-    return Object.entries(scores).map(([domain, score]) => ({
-      domain: formatDomainName(domain),
-      score,
-      analysis: `Your performance in ${formatDomainName(domain)} shows ${score >= 70 ? 'strength' : 'room for improvement'}.`,
-      strengths: score >= 60 ? [`Good ${domain} performance`] : [],
-      weaknesses: score < 60 ? [`Room to improve ${domain}`] : [],
-      recommendations: [`Practice ${domain} regularly`, `Try different ${domain} exercises`]
+    return analysisData.domainAnalyses.map((analysis: DomainAnalysis) => ({
+      ...analysis,
+      domain: formatDomainName(analysis.domain)
     }));
   };
 
@@ -235,144 +229,162 @@ export function useCognitiveAnalysis(userData: any, options: UseCognitiveAnalysi
     teachingStrategies?: string[];
     accommodations?: string[];
   } => {
-    if (analysisData?.learningStyle) {
-      // Ensure the learning style has teaching strategies and accommodations
-      const learningStyle = {
-        ...analysisData.learningStyle,
-        teachingStrategies: analysisData.learningStyle.teachingStrategies || 
-          ['Use a variety of instructional methods', 'Provide visual and verbal instruction'],
-        accommodations: analysisData.learningStyle.accommodations || 
-          ['Allow extra time when needed', 'Provide a structured learning environment']
+    if (!analysisData || !analysisData.learningStyle || !analysisData.learningStyle.primaryStyle) {
+      // Return default learning style if no data is available
+      console.log("No learning style data available, using default visual style");
+      return {
+        primaryStyle: 'Visual',
+        analysisText: 'Learning style could not be determined from the available data.',
+        recommendations: [],
+        description: 'Visual learners learn best through seeing information.',
+        teachingStrategies: ['Use diagrams', 'Show videos', 'Provide written instructions'],
+        accommodations: ['Provide visual aids', 'Use color-coding']
       };
-      
-      return learningStyle;
     }
     
-    // Determine learning style based on strengths
-    const { strengths } = getStrengthsAndWeaknesses();
-    const topDomain = strengths[0]?.name || 'Memory';
+    // Safely access the primaryStyle with a fallback
+    const style = (analysisData.learningStyle.primaryStyle || 'visual').toLowerCase();
     
-    // Map domains to learning styles
-    const styleMap: { [key: string]: string } = {
-      'Memory': 'Sequential Learner',
-      'Problem Solving': 'Logical Learner',
-      'Vocabulary': 'Verbal/Linguistic Learner',
-      'Spatial Reasoning': 'Visual-Spatial Learner',
-      'Navigation': 'Kinesthetic Learner',
-      'Cognitive Flexibility': 'Multimodal Learner'
+    // Define descriptions and strategies based on learning style
+    const styleInfo: {
+      [key: string]: {
+        description: string;
+        strategies: string[];
+        accommodations: string[];
+      }
+    } = {
+      visual: {
+        description: 'Visual learners learn best through seeing information presented visually. They prefer charts, diagrams, and written instructions.',
+        strategies: [
+          'Use diagrams, charts, and graphs',
+          'Provide written instructions',
+          'Use color-coding for organization',
+          'Take notes with visual elements'
+        ],
+        accommodations: [
+          'Provide visual aids for new concepts',
+          'Allow for visual note-taking',
+          'Use color-coding for important information'
+        ]
+      },
+      auditory: {
+        description: 'Auditory learners process information best when presented through sound and speech. They learn through listening and discussing.',
+        strategies: [
+          'Listen to lectures and audiobooks',
+          'Discuss ideas verbally',
+          'Read aloud when studying',
+          'Use verbal repetition'
+        ],
+        accommodations: [
+          'Record lectures when possible',
+          'Participate in group discussions',
+          'Explain concepts aloud to yourself'
+        ]
+      },
+      kinesthetic: {
+        description: 'Kinesthetic learners learn best through physical activities and hands-on experiences. They prefer engaging with materials directly.',
+        strategies: [
+          'Use hands-on experiments',
+          'Take frequent breaks to move around',
+          'Create physical models',
+          'Study while walking or moving'
+        ],
+        accommodations: [
+          'Use fidget tools while learning',
+          'Incorporate movement into study sessions',
+          'Practice concepts through real-world applications'
+        ]
+      }
     };
     
-    const primaryStyle = styleMap[topDomain] || 'Multimodal Learner';
+    // Default to visual if style not found
+    const matchedStyle = styleInfo[style] || styleInfo.visual;
     
-    // Generate basic learning style analysis
     return {
-      primaryStyle,
-      analysisText: `Based on your assessment performance, you show characteristics of a ${primaryStyle}.`,
-      recommendations: [
-        'Leverage your learning style to improve study effectiveness',
-        'Try different learning approaches for challenging material',
-        'Use your cognitive strengths to develop weaker areas'
-      ],
-      description: `${primaryStyle}s learn best through ${topDomain === 'Vocabulary' ? 'words and language' : 
-                   topDomain === 'Spatial Reasoning' ? 'images and spatial understanding' : 
-                   topDomain === 'Navigation' ? 'movement and physical interaction' : 
-                   'structured approaches and logical progression'}.`,
-      teachingStrategies: [
-        `Provide ${topDomain === 'Vocabulary' ? 'clear verbal instructions' : 
-          topDomain === 'Spatial Reasoning' ? 'visual diagrams and maps' : 
-          topDomain === 'Navigation' ? 'hands-on activities' : 
-          'well-structured step-by-step instructions'}`,
-        'Use multiple modalities to reinforce learning',
-        'Make connections between new and existing knowledge'
-      ],
-      accommodations: [
-        'Allow for flexible demonstration of knowledge',
-        'Provide materials in various formats',
-        'Create a supportive learning environment'
-      ]
+      ...analysisData.learningStyle,
+      description: matchedStyle.description,
+      teachingStrategies: matchedStyle.strategies,
+      accommodations: matchedStyle.accommodations
     };
   };
 
-  // Extract strengths from domain analyses
-  function extractStrengths(report: CognitiveReport): { name: string; score: number }[] {
-    const domainAnalyses = report.domainAnalyses || [];
-    return domainAnalyses
-      .filter(domain => domain.score >= 60)
-      .map(domain => ({ name: domain.domain, score: Math.round(domain.score) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
-  }
-
-  // Extract weaknesses from domain analyses
-  function extractWeaknesses(report: CognitiveReport): { name: string; score: number }[] {
-    const domainAnalyses = report.domainAnalyses || [];
-    return domainAnalyses
-      .filter(domain => domain.score < 60)
-      .map(domain => ({ name: domain.domain, score: Math.round(domain.score) }))
-      .sort((a, b) => a.score - b.score)
-      .slice(0, 3);
-  }
-
-  // Generate relationship insights between domains
-  function generateRelationshipInsights(report: CognitiveReport): { domains: string[]; insight: string }[] {
-    const domainAnalyses = report.domainAnalyses || [];
-    const insights = [];
+  // Extract strengths from the report
+  function extractStrengths(report: CognitiveReport | null): { name: string; score: number }[] {
+    if (!report || !report.domainAnalyses || !Array.isArray(report.domainAnalyses)) {
+      console.warn("Missing or invalid domain analyses for extracting strengths");
+      return [];
+    }
     
-    if (domainAnalyses.length >= 2) {
-      // Get pairs of domains with most interesting relationships (highest difference or both high)
-      const pairs = [];
-      
-      for (let i = 0; i < domainAnalyses.length; i++) {
-        for (let j = i + 1; j < domainAnalyses.length; j++) {
-          const domain1 = domainAnalyses[i];
-          const domain2 = domainAnalyses[j];
-          const roundedScore1 = Math.round(domain1.score);
-          const roundedScore2 = Math.round(domain2.score);
-          const difference = Math.abs(roundedScore1 - roundedScore2);
-          const combined = roundedScore1 + roundedScore2;
-          
-          pairs.push({
-            domains: [domain1.domain, domain2.domain],
-            scores: [roundedScore1, roundedScore2],
-            difference,
-            combined
+    return report.domainAnalyses
+      .filter((analysis: DomainAnalysis) => analysis && typeof analysis.score === 'number' && analysis.score >= 70)
+      .map((analysis: DomainAnalysis) => ({
+        name: formatDomainName(analysis.domain),
+        score: analysis.score
+      }));
+  }
+
+  // Extract weaknesses from the report
+  function extractWeaknesses(report: CognitiveReport | null): { name: string; score: number }[] {
+    if (!report || !report.domainAnalyses || !Array.isArray(report.domainAnalyses)) {
+      console.warn("Missing or invalid domain analyses for extracting weaknesses");
+      return [];
+    }
+    
+    return report.domainAnalyses
+      .filter((analysis: DomainAnalysis) => analysis && typeof analysis.score === 'number' && analysis.score < 60)
+      .map((analysis: DomainAnalysis) => ({
+        name: formatDomainName(analysis.domain),
+        score: analysis.score
+      }));
+  }
+
+  // Generate insights about relationships between domains
+  function generateRelationshipInsights(report: CognitiveReport | null): { domains: string[]; insight: string }[] {
+    if (!report || !report.domainAnalyses || !Array.isArray(report.domainAnalyses) || report.domainAnalyses.length < 2) {
+      console.warn("Insufficient domain data for relationship insights");
+      return [];
+    }
+    
+    const insights: { domains: string[]; insight: string }[] = [];
+    const analyses = report.domainAnalyses;
+    
+    for (let i = 0; i < analyses.length; i++) {
+      for (let j = i + 1; j < analyses.length; j++) {
+        if (!analyses[i] || !analyses[j] || 
+            typeof analyses[i].score !== 'number' || 
+            typeof analyses[j].score !== 'number') {
+          continue; // Skip invalid analyses
+        }
+        
+        const domain1 = formatDomainName(analyses[i].domain);
+        const domain2 = formatDomainName(analyses[j].domain);
+        const score1 = analyses[i].score;
+        const score2 = analyses[j].score;
+        
+        if (Math.abs(score1 - score2) <= 10) {
+          insights.push({
+            domains: [domain1, domain2],
+            insight: `Your performance in ${domain1} and ${domain2} is balanced, indicating consistent cognitive processing across these areas.`
+          });
+        } else if (Math.abs(score1 - score2) >= 25) {
+          const higher = score1 > score2 ? domain1 : domain2;
+          const lower = score1 > score2 ? domain2 : domain1;
+          insights.push({
+            domains: [domain1, domain2],
+            insight: `There's a significant difference between your ${higher} and ${lower} skills. Focusing on activities that bridge these domains could help balance your cognitive profile.`
           });
         }
       }
-      
-      // Sort by most interesting (high difference or both high)
-      pairs.sort((a, b) => {
-        // Prioritize pairs with high differences
-        if (a.difference > 20 && b.difference <= 20) return -1;
-        if (b.difference > 20 && a.difference <= 20) return 1;
-        
-        // Then pairs with high combined scores
-        return b.combined - a.combined;
-      });
-      
-      // Take top 3 relationships
-      for (let i = 0; i < Math.min(3, pairs.length); i++) {
-        const pair = pairs[i];
-        let insight = '';
-        
-        if (pair.difference > 20) {
-          insight = `Your ${pair.domains[0]} and ${pair.domains[1]} skills show significant difference. Consider how strengthening ${pair.scores[0] < pair.scores[1] ? pair.domains[0] : pair.domains[1]} might benefit your overall cognitive profile.`;
-        } else if (pair.combined > 140) {
-          insight = `You show strong capabilities in both ${pair.domains[0]} and ${pair.domains[1]}. These complementary skills can be leveraged together for complex problem-solving.`;
-        } else {
-          insight = `Your ${pair.domains[0]} and ${pair.domains[1]} abilities are fairly balanced. Continuing to develop both will help maintain cognitive flexibility.`;
-        }
-        
-        insights.push({ domains: pair.domains, insight });
-      }
     }
     
-    return insights;
+    return insights.slice(0, 3); // Return only top 3 insights
   }
 
-  // Generate a summary based on the report
-  function generateSummary(report: CognitiveReport): string {
-    return `Your cognitive assessment results show an overall score of ${Math.round(report.overallScore)}. ${report.summaryAnalysis}`;
+  // Generate summary from the report
+  function generateSummary(report: CognitiveReport | null): string {
+    if (!report) return 'Analysis summary not available.';
+    
+    return report.summaryAnalysis || 'Analysis summary not available.';
   }
 
   return {
@@ -380,13 +392,13 @@ export function useCognitiveAnalysis(userData: any, options: UseCognitiveAnalysi
     loading,
     error,
     fetchAnalysis,
+    getDomainScores,
     createRadarData,
     getStrengthsAndWeaknesses,
     getRecommendations,
     getDomainInsights,
     getLearningStyle,
-    overallScore: analysisData?.overallScore ? Math.round(analysisData.overallScore) : 
-      (userData ? Math.round(Object.values(getDomainScores()).reduce((sum: number, score: number) => sum + score, 0) / 6) : 0),
-    summary: analysisData?.summary || `Based on your assessment results, you show varying levels of performance across cognitive domains.`
+    overallScore: analysisData?.overallScore || 0,
+    summary: analysisData?.summary || ''
   };
 } 

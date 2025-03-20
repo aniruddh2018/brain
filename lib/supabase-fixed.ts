@@ -5,7 +5,31 @@ import type { Database } from '@/types/supabase';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
+// More detailed logging of Supabase initialization
+console.log('Supabase initialization:', { 
+  url: supabaseUrl ? `${supabaseUrl.substring(0, 12)}...` : 'MISSING', 
+  key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 5)}...` : 'MISSING',
+  environment: typeof window !== 'undefined' ? 'client' : 'server'
+});
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+
+// Test the Supabase connection and log the result
+if (typeof window !== 'undefined') {
+  // Only run this in browser environments
+  (async () => {
+    try {
+      const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
+      if (error) {
+        console.error('Supabase connection test failed:', error.message);
+      } else {
+        console.log('Supabase connection test successful!');
+      }
+    } catch (e) {
+      console.error('Error testing Supabase connection:', e);
+    }
+  })();
+}
 
 // Helper functions for data operations
 export const saveUserData = async (userData: any) => {
@@ -243,7 +267,22 @@ export const getUserData = async (userId: string) => {
 };
 
 export const getAllUserReports = async () => {
+  // Initialize with empty array to ensure consistent return type
+  let userData: any[] = [];
+  
   try {
+    // Check if Supabase client is properly initialized
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Supabase configuration is missing:', { 
+        hasUrl: !!supabaseUrl, 
+        hasKey: !!supabaseAnonKey 
+      });
+      return []; // Return empty array instead of throwing
+    }
+
+    // Log that we're starting the query
+    console.log('Fetching all user reports...');
+    
     const { data, error } = await supabase
       .from('users')
       .select(`
@@ -252,10 +291,232 @@ export const getAllUserReports = async () => {
       `)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase query error:', error);
+      // Don't throw, just return empty array
+      return [];
+    }
+    
+    // Check if data is present and valid
+    if (!data || !Array.isArray(data)) {
+      console.error('Invalid data structure returned from Supabase:', data);
+      return [];
+    }
+    
+    // Log success and data length
+    console.log(`Successfully fetched data for ${data.length} users`);
+    
+    // Process the data before returning
+    userData = data.map(user => {
+      // Extract cognitive reports
+      const reports = Array.isArray(user.cognitive_reports) 
+        ? user.cognitive_reports 
+        : [];
+      
+      // Log reports per user to debug
+      console.log(`User ${user.id} has ${reports.length} reports`);
+      
+      return {
+        ...user,
+        cognitive_reports: reports,
+      };
+    });
+    
+    return userData;
+  } catch (error) {
+    // Capture and log any unexpected errors
+    console.error('Unexpected error getting all user reports:', error);
+    // Return empty array instead of throwing to avoid crashing the UI
+    return [];
+  }
+};
+
+// Enhanced getAllCognitiveReports function
+export const getAllCognitiveReports = async () => {
+  try {
+    // Check if Supabase client is properly initialized
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Supabase configuration is missing:', { 
+        hasUrl: !!supabaseUrl, 
+        hasKey: !!supabaseAnonKey 
+      });
+      return []; 
+    }
+
+    console.log(`Directly fetching cognitive reports using URL: ${supabaseUrl.substring(0, 12)}...`);
+    
+    // Additional safety check for Supabase instance
+    if (!supabase || typeof supabase.from !== 'function') {
+      console.error('Supabase client is improperly initialized');
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('cognitive_reports')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching cognitive reports:', {
+        code: error.code,
+        message: error.message,
+        details: error.details
+      });
+      return [];
+    }
+    
+    if (!data) {
+      console.log('No cognitive reports data returned');
+      return [];
+    }
+    
+    console.log(`Successfully fetched ${data.length} cognitive reports`);
     return data;
   } catch (error) {
-    console.error('Error getting all user reports:', error);
-    throw error;
+    console.error('Unexpected error getting cognitive reports:', error);
+    // Provide more details about the error
+    if (error instanceof Error) {
+      console.error(`Error name: ${error.name}, message: ${error.message}`);
+      console.error(`Stack trace: ${error.stack}`);
+    }
+    return [];
+  }
+};
+
+// Add a new utility function to verify connection
+export const verifySupabaseConnection = async () => {
+  try {
+    console.log('Verifying Supabase connection...');
+    
+    // Check environment variables
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing Supabase environment variables');
+      return {
+        success: false,
+        error: 'Missing environment variables'
+      };
+    }
+    
+    // Test a simple query
+    const { data, error } = await supabase
+      .from('users')
+      .select('count', { count: 'exact', head: true });
+      
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+    
+    console.log('Supabase connection verified successfully');
+    return {
+      success: true,
+      data
+    };
+  } catch (error) {
+    console.error('Error verifying Supabase connection:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+};
+
+// Add a new function to get reports for a specific user
+export const getUserCognitiveReports = async (userId: string) => {
+  try {
+    // Check if Supabase client is properly initialized
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Supabase configuration is missing when getting user reports', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseAnonKey
+      });
+      return { success: false, error: 'Missing Supabase configuration', data: [] };
+    }
+
+    console.log(`Fetching cognitive reports for user ID: ${userId}`);
+    
+    if (!userId) {
+      console.error('No user ID provided for getUserCognitiveReports');
+      return { success: false, error: 'No user ID provided', data: [] };
+    }
+    
+    // Additional safety check for Supabase instance
+    if (!supabase || typeof supabase.from !== 'function') {
+      console.error('Supabase client is improperly initialized in getUserCognitiveReports');
+      return { success: false, error: 'Supabase client not initialized', data: [] };
+    }
+    
+    // Log more details about the Supabase client
+    console.log('Supabase client status:', {
+      hasFrom: typeof supabase.from === 'function',
+      hasAuth: typeof supabase.auth === 'object',
+      url: supabaseUrl ? `${supabaseUrl.substring(0, 12)}...` : 'MISSING'
+    });
+    
+    // Direct query for this user's reports
+    console.log('Executing query for cognitive_reports table...');
+    const { data, error, status, statusText } = await supabase
+      .from('cognitive_reports')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    // Log response details
+    console.log('Query response status:', status, statusText);
+    
+    if (error) {
+      console.error('Error fetching user\'s cognitive reports:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        status,
+        statusText
+      });
+      return { success: false, error: error.message, data: [], status, details: error.details };
+    }
+    
+    if (!data) {
+      console.log(`No data returned for user ${userId} (data is null or undefined)`);
+      return { success: true, data: [] };
+    }
+    
+    if (!Array.isArray(data)) {
+      console.error(`Unexpected data format for user ${userId}:`, typeof data);
+      return { success: false, error: 'Invalid data format', data: [] };
+    }
+    
+    if (data.length === 0) {
+      console.log(`No cognitive reports found for user ${userId} (empty array)`);
+    } else {
+      console.log(`Successfully fetched ${data.length} cognitive reports for user ${userId}`);
+      console.log('First report:', {
+        id: data[0]?.id,
+        user_id: data[0]?.user_id,
+        created_at: data[0]?.created_at
+      });
+    }
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Unexpected error getting user cognitive reports:', error);
+    // More detailed error logging
+    if (error instanceof Error) {
+      console.error(`Error name: ${error.name}, message: ${error.message}`);
+      console.error(`Stack trace: ${error.stack}`);
+      return { 
+        success: false, 
+        error: `${error.name}: ${error.message}`,
+        data: [],
+        stack: error.stack
+      };
+    }
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      data: []
+    };
   }
 }; 
