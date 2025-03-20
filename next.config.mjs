@@ -31,15 +31,6 @@ const nextConfig = {
   output: 'standalone',
   // Optimize build size
   compress: true,
-  // Minimize build size by excluding specific development files
-  // Optimize build size
-  compress: true,
-  poweredByHeader: false,
-  // Add experimental settings to reduce function size
-  experimental: {
-    // Optimize bundle size
-    optimizeCss: true
-  }
   poweredByHeader: false,
   // Other settings
   trailingSlash: true,
@@ -47,11 +38,7 @@ const nextConfig = {
   // Add experimental settings to reduce function size
   experimental: {
     // Optimize bundle size
-    optimizeCss: true,
-    // Create smaller chunks
-    turbotrace: {
-      logLevel: 'error'
-    }
+    optimizeCss: true
   },
   // Configure webpack to minimize bundle size
   webpack: (config, { isServer }) => {
