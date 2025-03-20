@@ -209,7 +209,7 @@ export default function UserForm() {
     }
   }
 
-  const handleGoogleAuth = async (e?: React.MouseEvent) => {
+  const handleGoogleAuth = async (e?: React.MouseEvent | React.FormEvent) => {
     if (e) e.preventDefault();
 
     // Only for new users, validate the form first

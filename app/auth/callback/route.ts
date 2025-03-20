@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { saveUserData, getUserData } from '@/lib'
 
+// Specify this is a dynamic route
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')

@@ -8,13 +8,6 @@ try {
   console.warn('next-pwa package not found, PWA features will be disabled');
 }
 
-let userConfig = undefined
-try {
-  userConfig = await import('./v0-user-next.config')
-} catch (e) {
-  // ignore error
-}
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -31,63 +24,22 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+    // Default loader for Next.js works fine with Netlify
+    unoptimized: false,
   },
-  experimental: {
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
-    optimizeCss: true,
-    optimizePackageImports: [
-      'lucide-react', 
-      '@radix-ui/react-icons', 
-      'date-fns',
-      'recharts'
-    ],
-  },
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
-      exclude: ['error', 'warn'],
-    } : false,
-  },
+  // Output standalone to ensure all dependencies are included
   output: 'standalone',
-  poweredByHeader: false,
-  reactStrictMode: true,
+  // Other settings
   trailingSlash: true,
-  compress: true,
+  reactStrictMode: true,
 }
 
-mergeConfig(nextConfig, userConfig)
+// Apply PWA configuration
+const config = withPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+})(nextConfig);
 
-// Wrap with PWA only in production
-const config = process.env.NODE_ENV === 'production' 
-  ? withPWA({
-      dest: 'public',
-      disable: process.env.NODE_ENV === 'development',
-      register: true,
-      skipWaiting: true,
-      sw: 'service-worker.js',
-      cacheOnFrontEndNav: true,
-    })(nextConfig)
-  : nextConfig;
-
-function mergeConfig(nextConfig, userConfig) {
-  if (!userConfig) {
-    return
-  }
-
-  for (const key in userConfig) {
-    if (
-      typeof nextConfig[key] === 'object' &&
-      !Array.isArray(nextConfig[key])
-    ) {
-      nextConfig[key] = {
-        ...nextConfig[key],
-        ...userConfig[key],
-      }
-    } else {
-      nextConfig[key] = userConfig[key]
-    }
-  }
-}
-
-export default config
+export default config;
